@@ -1,9 +1,14 @@
+import os
+import json
+
 class Config():
 
     def __init__(self):
 
-        self.IP = '192.168.1.1'
-        self.PORT = 5050
+        with open('config.json', 'r') as file:
+            connect_params = (json.loads(file.read()))
+        self.IP = connect_params["IP"]
+        self.PORT = connect_params["PORT"]
         self.ADDR = (self.IP, self.PORT)
 
         self.ini_data_flag = 0
@@ -39,6 +44,9 @@ class Config():
         # wind params
         self.wind_module = 0.
         self.wind_direction = 0.
+        # temp
+        self.temperature = 0.
+        self.pressure = 0.
 
         # bullet type
         # 1 - 5.45
@@ -59,7 +67,7 @@ class Config():
         # mass
         self.m = 0.
         # resistance koef
-        self.k = 0.
+        self.k0 = 0.
         # dR
         self.dR = 0.
         # std
@@ -75,18 +83,25 @@ class Config():
         self.eta = 0.
         # bounds
         self.k_bounds = [0, 0]
-        self.V0_bounds = [0, 0]
+        self.v0_bounds = [0, 0]
         self.dR_bounds = [0, 0]
         self.angle_bounds = [0, 0]
         # filter params
         self.ksi_Vr = 0.
-        self.n1 = 0.
-        self.n2 = 0.
+        self.Vr_n1 = 0.
+        self.Vr_n2 = 0.
         self.ksi_theta = 0.
         self.theta_n1 = 0.
 
         # читаем файл БД снарядов и запоминаем их в список всех снарядов
         self.bullets = []
+
+        with open('bullets.json', 'r') as file:
+            for line in file:
+                self.bullets.append(json.loads(line))
+        print(len(self.bullets))
+        print(self.bullets)
+
 
 
         # track ??
