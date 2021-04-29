@@ -49,13 +49,13 @@ class Config():
         self.pressure = 0.
 
         # bullet type
-        # 1 - 5.45
-        # 2 - 7.62
+        # 1 - 5.45 # деривация + ветер везде для боковых отклонений в с дерив
+        # 2 - 7.62 # деривация
         # 3 - 82
-        # 4 - 122 reactive
-        # 5 - 122 art
-        # 6 - 152 reactive
-        # 7 - 152 art
+        # 4 - 122 reactive # ссрзо - участочек - часть с обрезкой
+        # 5 - 122 art # квадратично - масса снаряда меняется
+        # 6 - 152 act - reactive # с двумя до окошками
+        # 7 - 152 art # все как к пулям и к минам - квадртатичное
         self.bullet_type = 0
 
         # bullet params
@@ -92,6 +92,8 @@ class Config():
         self.Vr_n2 = 0.
         self.ksi_theta = 0.
         self.theta_n1 = 0.
+
+        self.flag_return = 0
 
         # читаем файл БД снарядов и запоминаем их в список всех снарядов
         self.bullets = []

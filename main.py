@@ -2,6 +2,7 @@ import socket
 from config import Config
 import json
 import processing as pr
+import plotly.graph_objs as go
 
 config = Config()
 
@@ -20,8 +21,7 @@ while True:
     print("Size {}".format(rcv_size))
     print("Type {:0x}".format(rcv_type))
 
-    data = client.recv(rcv_size) #20000
-
+    data = client.recv(rcv_size)
     last_bytes = rcv_size - len(data)
 
     while last_bytes > 0:
@@ -30,33 +30,28 @@ while True:
 
     if rcv_type == 0x150001 or rcv_type == 0x150002:
         data = json.loads((data.decode()))
+        print(data)
 
         if rcv_type == 0x150001:
             pr.process_initial_data(data, config)
 
         if rcv_type == 0x150002:
+
             if config.ini_data_flag:
+
                 points = data["meas"]
-                print(len(points))
                 print(points)
-                # pr.process_measurements(data, config)
-                # N = len(data['trajPoints'])
-                # track = {}
-                # points = {}
+                pr.process_measurements(data, config)
+
+                print(config.track, "track client")
+
+                data2send = json.dumps(config.track).encode()
+                client.sendall(len(data2send).to_bytes(4, "little"))
+                client.sendall((0x150003).to_bytes(4, "little"))
+                client.sendall(data2send)
+
             else:
                 print("idi na xyu")
 
-    # if data.type == "initial data":
-    #     #     pr.process_initial_data(data, config)
-    #     # elif data.type == "measurements":
-    #     #     if pr.process_measurements(data, config):
-    #     #         client.send(config.track)
-    #     #     else:
-    #     #         print("Fail")
-    #     # else:
-    #     #     print("Type is unknown")
-
-    # data = json.loads((data.decode()))
-    # print(type(data))
 
 
