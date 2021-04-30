@@ -83,7 +83,7 @@ def process_measurements(data, config):
         sigma_n_R_loc = 5
         sigma_n_theta = 0.1
 
-        Ndlen = len(data["meas"])
+        Ndlen = len(data["points"])
 
         t_meas = np.zeros(Ndlen)
         R_meas = np.zeros(Ndlen)
@@ -92,10 +92,10 @@ def process_measurements(data, config):
 
         for i in range(Ndlen):
             # считываем пришедшие данные
-            t_meas[i] = data["meas"][i]["execTime_sec"]
-            R_meas[i] = data["meas"][i]["R"]
-            Vr_meas[i] = abs(data["meas"][i]["Vr"])
-            theta_meas[i] = np.deg2rad(data["meas"][i]["Epsilon"])
+            t_meas[i] = data["points"][i]["execTime"]
+            R_meas[i] = data["points"][i]["R"]
+            Vr_meas[i] = abs(data["points"][i]["Vr"])
+            theta_meas[i] = np.deg2rad(data["points"][i]["Epsilon"])
 
         if config.bullet_type == 1 or config.bullet_type == 2:  # 5.45 bullet or 7.65 bullet
 

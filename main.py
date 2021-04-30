@@ -14,18 +14,28 @@ client.connect(config.ADDR)
 # 0х150003 - массив точек траекторий
 
 while True:
-
-    rcv_size = int.from_bytes(client.recv(4), "little")
-    rcv_type = int.from_bytes(client.recv(4), "little")
+    rdata = client.recv(4)
+    if len(rdata) < 4:
+        break
+    rcv_size = int.from_bytes(rdata, "little")
+    rdata = client.recv(4)
+    if len(rdata) < 4:
+        break
+    rcv_type = int.from_bytes(rdata, "little")
 
     print("Size {}".format(rcv_size))
     print("Type {:0x}".format(rcv_type))
 
     data = client.recv(rcv_size)
+    if len(data) == 0:
+        break
     last_bytes = rcv_size - len(data)
 
     while last_bytes > 0:
-        data = data + client.recv(last_bytes)
+        rdata = client.recv(last_bytes)
+        if len(rdata) == 0:
+            break
+        data = data + rdata
         last_bytes = rcv_size - len(data)
 
     if rcv_type == 0x150001 or rcv_type == 0x150002:
@@ -39,7 +49,7 @@ while True:
 
             if config.ini_data_flag:
 
-                points = data["meas"]
+                points = data["points"]
                 print(points)
                 pr.process_measurements(data, config)
 
