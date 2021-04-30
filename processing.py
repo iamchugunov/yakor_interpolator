@@ -23,10 +23,6 @@ def process_initial_data(mes, config):
     config.loc_Y, config.loc_X, config.loc_Z = pm.geodetic2enu(config.loc_B, config.loc_L, config.loc_H,
                                                                config.can_B, config.can_L, config.can_H)
 
-    config.can_X = 0
-    config.can_L = 0
-    config.can_H = 0
-
     config.alpha = mes["alpha"]
     config.az = mes["az"]
     config.hei = mes["hei"]
@@ -83,7 +79,7 @@ def process_measurements(data, config):
         sigma_n_R_loc = 5
         sigma_n_theta = 0.1
 
-        Ndlen = len(data["meas"])
+        Ndlen = len(data["points"])
 
         t_meas = np.zeros(Ndlen)
         R_meas = np.zeros(Ndlen)
@@ -92,10 +88,10 @@ def process_measurements(data, config):
 
         for i in range(Ndlen):
             # считываем пришедшие данные
-            t_meas[i] = data["meas"][i]["execTime_sec"]
-            R_meas[i] = data["meas"][i]["R"]
-            Vr_meas[i] = abs(data["meas"][i]["Vr"])
-            theta_meas[i] = np.deg2rad(data["meas"][i]["Epsilon"])
+            t_meas[i] = data["points"][i]["execTime_sec"]
+            R_meas[i] = data["points"][i]["R"]
+            Vr_meas[i] = abs(data["points"][i]["Vr"])
+            theta_meas[i] = np.deg2rad(data["points"][i]["Epsilon"])
 
         if config.bullet_type == 1 or config.bullet_type == 2:  # 5.45 bullet or 7.65 bullet
 
@@ -236,7 +232,7 @@ def process_measurements(data, config):
             points = []
 
             for i in range(len(t_meas_plot) - 1):
-                for j in range(len(t_meas_plot[i])):
+                for j in range(len(t_meas_plot[i]) - 1):
                     points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                    "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                    "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],

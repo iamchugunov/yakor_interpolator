@@ -1515,10 +1515,13 @@ def func_tochka_fall(z, x_fin, h_fin, can_B, can_L, az, sigma_n_theta, sigma_n_R
     x_fall_gk = x_sp_gk + deltaXY_gk[1]
     z_fall_gk = y_sp_gk + deltaXY_gk[0]
 
+    print(x_fall_gk, z_fall_gk)
+
     return x_fall_gk, z_fall_gk
 
 
 def BLH2XY_GK(B, L):
+
     B_rad = np.deg2rad(B)
     n = np.fix((6 + L) / 6)
     l = (L - (3 + 6 * (n - 1))) / 57.29577951
