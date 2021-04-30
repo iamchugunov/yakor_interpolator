@@ -14,7 +14,10 @@ client.connect(config.ADDR)
 # 0х150003 - массив точек траекторий
 
 while True:
+<<<<<<< HEAD
 
+=======
+>>>>>>> e24ebce008f5aeb10841437b850846e962b3d94c
     rdata = client.recv(4)
     if len(rdata) < 4:
         break
@@ -33,7 +36,10 @@ while True:
     last_bytes = rcv_size - len(data)
 
     while last_bytes > 0:
+<<<<<<< HEAD
         data = data + client.recv(last_bytes)
+=======
+>>>>>>> e24ebce008f5aeb10841437b850846e962b3d94c
         rdata = client.recv(last_bytes)
         if len(rdata) == 0:
             break
@@ -52,6 +58,10 @@ while True:
             if config.ini_data_flag:
 
                 points = data["points"]
+<<<<<<< HEAD
+=======
+                print(points)
+>>>>>>> e24ebce008f5aeb10841437b850846e962b3d94c
                 pr.process_measurements(data, config)
 
                 print(config.track, "track client")
