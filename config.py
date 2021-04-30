@@ -46,7 +46,7 @@ class Config():
         self.wind_direction = 0.
         # temp
         self.temperature = 0.
-        self.pressure = 0.
+        self.atm_pressure = 0.
 
         # bullet type
         # 1 - 5.45 # деривация + ветер везде для боковых отклонений в с дерив
