@@ -2,7 +2,7 @@ import socket
 from config import Config
 import json
 import processing as pr
-import plotly.graph_objs as go
+
 
 config = Config()
 
@@ -51,7 +51,7 @@ while True:
                 client.sendall(data2send)
 
             else:
-                print("idi na xyu")
+                print("nen")
 
 
 

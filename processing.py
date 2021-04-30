@@ -1,12 +1,11 @@
 import numpy as np
 import pymap3d as pm
 
-global g
-g = 9.8155
 
-from function import kalman_filter_xV, kalman_filter_theta, func_linear_piece_app, func_linear_piece_estimation, \
-    func_quad_piece_app, func_quad_piece_estimation, func_derivation, func_meas_smooth_2, \
-    BLH2XY_GK, calculate_ellipse
+from function import func_linear_piece_app, func_linear_piece_estimation, \
+    func_quad_piece_app, func_quad_piece_estimation, func_derivation, \
+    func_trajectory_end_linear, func_trajectory_end_quad, func_filter_data, func_active_reactive, \
+    func_active_reactive_trajectory, func_wind, func_tochka_fall, func_derivation_bullet
 
 
 def process_initial_data(mes, config):
@@ -27,6 +26,16 @@ def process_initial_data(mes, config):
     config.can_X = 0
     config.can_L = 0
     config.can_H = 0
+
+    config.alpha = mes["alpha"]
+    config.az = mes["az"]
+    config.hei = mes["hei"]
+
+    config.wind_module = mes["wind_module"]
+    config.wind_direction = mes["wind_direction"]
+
+    config.temperature = mes["temperature"]
+    config.pressure = mes["atm_pressure"]
 
     config.bullet_type = mes["bullet_type"]
 
@@ -59,25 +68,22 @@ def process_initial_data(mes, config):
     config.ksi_theta = bullet["ksi_theta"]
     config.theta_n1 = bullet["theta_n1"]
 
-    # заполняем параметры пули в конфиг из списка
-    # поднимаем флаг
+    config.flag_valid = 0
     config.ini_data_flag = 1
-
     config.flag_return = 0
 
 
 def process_measurements(data, config):
     if config.ini_data_flag:
 
-        # приходит дата - измерения
-        # размер пришедшей даты - точек
-        alpha = np.deg2rad(45)
+        parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
+        N = 300
+        g = 9.8155
+
+        sigma_n_R_loc = 5
+        sigma_n_theta = 0.1
 
         Ndlen = len(data["meas"])
-
-        print(Ndlen, "Ndlen")
-
-
 
         t_meas = np.zeros(Ndlen)
         R_meas = np.zeros(Ndlen)
@@ -85,112 +91,625 @@ def process_measurements(data, config):
         theta_meas = np.zeros(Ndlen)
 
         for i in range(Ndlen):
-            # считываем пришедшие даныне
+            # считываем пришедшие данные
             t_meas[i] = data["meas"][i]["execTime_sec"]
             R_meas[i] = data["meas"][i]["R"]
-            Vr_meas[i] = data["meas"][i]["Vr"]
-            theta_meas[i] = data["meas"][i]["Epsilon"]
+            Vr_meas[i] = abs(data["meas"][i]["Vr"])
+            theta_meas[i] = np.deg2rad(data["meas"][i]["Epsilon"])
 
-        Vr_meas = abs(Vr_meas)
-        theta_meas = np.deg2rad(theta_meas)
-        # подгрузили измерения
+        if config.bullet_type == 1 or config.bullet_type == 2:  # 5.45 bullet or 7.65 bullet
 
-        x_est = np.zeros([Ndlen, 2])
-        x_est_theta = np.zeros([Ndlen, 2])
+            winlen = 10
+            step_sld = 2
 
-        # по умолчанию фильтруем данные
-        for k in range(Ndlen):
+            R_meas, Vr_meas, theta_meas = func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, config.ksi_Vr,
+                                                           config.n1, config.n2,
+                                                           config.ksi_theta,
+                                                           config.theta_n1)
 
-            if k == 0:
-                x_est[k] = [R_meas[k], Vr_meas[k]]
-                x_est_theta[k] = [theta_meas[k], 0.0001]
-                D_x_est = np.array([[1, 0], [0, 1]])
-                D_x_est_theta = np.array([[1, 0], [0, 1]])
-            else:
-                x_est[k], D_x_est = kalman_filter_xV(x_est[k - 1], D_x_est, np.array([R_meas[k], Vr_meas[k]]),
-                                                     t_meas[k] - t_meas[k - 1], config.ksi_Vr, config.n1,
-                                                     config.n2)
+            xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
+            Vr_meas_tr, theta_meas_tr = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_H,
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, config.k0,
+                                                            config.dR, t_meas,
+                                                            R_meas, Vr_meas, theta_meas, winlen,
+                                                            step_sld, parameters_bounds)
 
-                x_est_theta[k], D_x_est_theta = kalman_filter_theta(x_est_theta[k - 1], D_x_est_theta,
-                                                                    theta_meas[k], t_meas[k] - t_meas[k - 1],
-                                                                    config.ksi_theta,
-                                                                    config.theta_n1)
+            t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
+            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
+            Ah_true_er_plot = func_quad_piece_estimation(
+                xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
+                config.m, g, config.loc_X, config.loc_Y, config.loc_H)
 
-        # подобрать определенные средние параметры
-        winlen = 30
-        step_sld = 10
-        N = 300
-        # подобрать два данных параметра
+            t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, alpha_true_fin, \
+            A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(config.m, g, xhy_0_set, x_est_fin,
+                                                                                meas_t_ind,
+                                                                                window_set, t_meas_tr, config.loc_X,
+                                                                                config.loc_Y,
+                                                                                config.loc_H)
+            K_inch = 39.3701
+            K_gran = 15432.4
+            K_fut = 3.28084
 
-        # подбор вот этих параметров
+            z_deriv = func_derivation_bullet(config.m, config.d, config.l, config.eta, K_inch, K_gran, K_fut, config.v0, t_fin[-1])
 
-        # берем данные отфильтрованные
-        R_meas = x_est[:, 0]
-        theta_meas = x_est_theta[:, 0]
-        Vr_meas = x_est[:, 1]
+            z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
+                               config.wind_direction, config.az)
 
-        if config.bullet_type == 3:  # если мина - линейное, другие снаряды - квадратичная
-            xhy_0_set_linear, x_est_fin_linear_piece, meas_t_ind_linear, t_meas_tr_linear, R_meas_tr_linear, \
-            Vr_meas_tr_linear, theta_meas_tr_linear = func_linear_piece_app(config.loc_X, config.loc_Y, config.loc_H,
-                                                                            config.can_X, config.can_Y, config.can_Z,
-                                                                            config.m, g, config.SKO_R,
-                                                                            config.SKO_Vr, config.SKO_theta, config.k0,
-                                                                            config.dR, alpha, t_meas,
-                                                                            R_meas, Vr_meas, theta_meas, winlen,
-                                                                            step_sld,
-                                                                            [config.k_bounds, config.v0_bounds,
-                                                                             config.dR_bounds, config.angle_bounds],
-                                                                            )
+            z = z_wind + z_deriv
 
-            t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, \
-            theta_est_full_plot, Vx_true_er_plot, Vh_true_er_plot, V_abs_full_plot = func_linear_piece_estimation(
-                xhy_0_set_linear, x_est_fin_linear_piece, meas_t_ind_linear, t_meas_tr_linear, N,
-                winlen, config.m, g, config.loc_X, config.loc_Y, config.loc_H)
-            print(t_meas_plot)
+            x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
+                                                    config.az, sigma_n_theta, sigma_n_R_loc)
 
-            config.flag_return = 1
-
-        else:
-
-            xhy_0_set_quad, x_est_fin_quad_piece, meas_t_ind_quad, t_meas_tr_quad, R_meas_tr_quad, \
-            Vr_meas_tr_quad, theta_meas_tr_quad = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_H,
-                                                                      config.can_X, config.can_Y, config.can_Z,
-                                                                      config.m, g, config.SKO_R,
-                                                                      config.SKO_Vr, config.SKO_theta, config.k0,
-                                                                      config.dR, alpha, t_meas,
-                                                                      R_meas, Vr_meas, theta_meas, winlen,
-                                                                      step_sld, [config.k_bounds, config.v0_bounds,
-                                                                             config.dR_bounds, config.angle_bounds],
-                                                                      )
-
-            t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, \
-            theta_est_full_plot,  Vx_true_er_plot, Vh_true_er_plot, V_abs_full_plot = func_quad_piece_estimation(
-                xhy_0_set_quad, x_est_fin_quad_piece, meas_t_ind_quad, t_meas_tr_quad, N,
-                winlen, config.m, g, config.loc_X, config.loc_Y, config.loc_H)
-
-            config.flag_return = 1
-
-        # как-то определить оптимальный размер - 30 весь файл?
-
-        # парсим измерения, вычисляем траекторию, поднимаем флажок если все посчиталось
-        if config.flag_return == 1:
-            # linear ...
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
+            Vd = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
 
             track_points = {}
             points = []
-            for i in range(len(t_meas_plot)):
-                for j in range(len(t_meas_plot[i]) - 1):
-                    points.append({"t": t_meas_plot[i][j], "x_tr": x_tr_er_plot[i][j], "h_tr": h_tr_er_plot[i][j],
-                                   "R": R_est_full_plot[i][j],
-                                   "Vr": Vr_est_full_plot[i][j], "theta": theta_est_full_plot[i][j]})
+
+            for i in range(len(t_meas_plot) - 1):
+                for j in range(len(t_meas_plot[i])):
+                    points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                                   "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
+                                   "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
+                                   "Ax": Ax_true_er_plot[i][j],
+                                   "Ay": Ah_true_er_plot[i][j], "Az": 0, "C": x_est_fin[i][0],
+                                   "alpha": alpha_tr_er_plot[i][j],
+                                   "DistanceR": R_est_full_plot[i][j], "AzR": 0,
+                                   "VrR": Vr_est_full_plot[i][j], "EvR": theta_est_full_plot[i][j],
+                                   "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            for i in range(len(t_fin)):
+                points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                               "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
+                               "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
+                               "Ax": Ax_true_fin[i],
+                               "Ay": Ah_true_fin[i], "Az": 0, "C": x_est_fin[-1][0],
+                               "alpha": alpha_true_fin[i],
+                               "DistanceR": R_true_fin[i], "AzR": 0,
+                               "VrR": Vr_true_fin[i], "EvR": theta_true_fin[i],
+                               "valid_R": 0, "valid_V": 0, "valid_theta": 0})
 
             track_points["points"] = points
+            track_points["endpoint_x"] = x_true_fin[-1]
+            track_points["endpoint_y"] = h_true_fin[-1]
+            track_points["endpoint_z"] = z
+            track_points["endpoint_GK_x"] = x_fall_gk[0]
+            track_points["endpoint_GK_z"] = z_fall_gk[0]
+            track_points["Vb"] = Vb
+            track_points["Vd"] = Vd
+            track_points["SKO_R"] = 0.
+            track_points["SKO_V"] = 0.
+            track_points["SKO_theta"] = 0.
             track_points["valid"] = True
 
+
+
+            config.flag_return = 1
+
+        if config.bullet_type == 3:  # 82 mina
+
+            parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
+
+            winlen = 30
+            step_sld = 10
+
+            R_meas, Vr_meas, theta_meas = func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, config.ksi_Vr,
+                                                           config.n1, config.n2,
+                                                           config.ksi_theta,
+                                                           config.theta_n1)
+
+            xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
+            Vr_meas_tr, theta_meas_tr = func_linear_piece_app(config.loc_X, config.loc_Y, config.loc_H,
+                                                              config.can_Y,
+                                                              config.m, g, config.SKO_R,
+                                                              config.SKO_Vr, config.SKO_theta, config.k0,
+                                                              config.dR, t_meas,
+                                                              R_meas, Vr_meas, theta_meas, winlen,
+                                                              step_sld, parameters_bounds)
+
+            t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
+            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
+            Ah_true_er_plot = func_linear_piece_estimation(
+                xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
+                config.m, g, config.loc_X, config.loc_Y, config.loc_H)
+
+            t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, \
+            V_abs_true_fin, alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_linear(
+                config.m, g, xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, config.loc_X, config.loc_Y,
+                config.loc_H)
+
+
+            z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
+                               config.wind_direction, config.az)
+
+            z = z_wind
+
+            x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
+                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
+            Vd = 3 * sigma_n_R_loc
+
+            track_points = {}
+            points = []
+
+            for i in range(len(t_meas_plot) - 1):
+                for j in range(len(t_meas_plot[i])):
+                    points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                                   "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
+                                   "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
+                                   "Ax": Ax_true_er_plot[i][j],
+                                   "Ay": Ah_true_er_plot[i][j], "Az": 0, "C": x_est_fin[i][0],
+                                   "alpha": alpha_tr_er_plot[i][j],
+                                   "DistanceR": R_est_full_plot[i][j], "AzR": 0,
+                                   "VrR": Vr_est_full_plot[i][j], "EvR": theta_est_full_plot[i][j],
+                                   "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            for i in range(len(t_fin)):
+                points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                               "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
+                               "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
+                               "Ax": Ax_true_fin[i],
+                               "Ay": Ah_true_fin[i], "Az": 0, "C": x_est_fin[-1][0],
+                               "alpha": alpha_true_fin[i],
+                               "DistanceR": R_true_fin[i], "AzR": 0,
+                               "VrR": Vr_true_fin[i], "EvR": theta_true_fin[i],
+                               "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            track_points["points"] = points
+            track_points["endpoint_x"] = x_true_fin[-1]
+            track_points["endpoint_y"] = h_true_fin[-1]
+            track_points["endpoint_z"] = z
+            track_points["endpoint_GK_x"] = x_fall_gk[0]
+            track_points["endpoint_GK_z"] = z_fall_gk[0]
+            track_points["Vb"] = Vb
+            track_points["Vd"] = Vd
+            track_points["SKO_R"] = 0.
+            track_points["SKO_V"] = 0.
+            track_points["SKO_theta"] = 0.
+            track_points["valid"] = True
+
+            print(track_points, "vvvv")
+
+            config.flag_return = 1
+
+        if config.bullet_type == 4:  # 122 reactive
+            parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
+
+            time_in = 0
+
+            for i in range(len(t_meas)):
+                if t_meas[i] > 3:
+                    time_in = i
+                    break
+
+            t_meas = t_meas[time_in:]
+            R_meas = R_meas[time_in:]
+            Vr_meas = Vr_meas[time_in:]
+            theta_meas = theta_meas[time_in:]
+
+            winlen = 30
+            step_sld = 10
+
+            R_meas, Vr_meas, theta_meas = func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, config.ksi_Vr,
+                                                           config.n1, config.n2,
+                                                           config.ksi_theta,
+                                                           config.theta_n1)
+
+            xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
+            Vr_meas_tr, theta_meas_tr = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_H,
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, config.k0,
+                                                            config.dR, t_meas,
+                                                            R_meas, Vr_meas, theta_meas, winlen,
+                                                            step_sld, parameters_bounds)
+
+            t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
+            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
+            Ah_true_er_plot = func_quad_piece_estimation(
+                xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
+                config.m, g, config.loc_X, config.loc_Y, config.loc_H)
+
+            t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, alpha_true_fin, \
+            A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(config.m, g, xhy_0_set, x_est_fin,
+                                                                                meas_t_ind,
+                                                                                window_set, t_meas_tr, config.loc_X,
+                                                                                config.loc_Y,
+                                                                                config.loc_H)
+
+            z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
+                               config.wind_direction, config.az)
+
+            z = z_wind
+
+            x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
+                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
+            Vd = 3 * sigma_n_R_loc
+
+            track_points = {}
+            points = []
+
+            for i in range(len(t_meas_plot) - 1):
+                for j in range(len(t_meas_plot[i])):
+                    points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                                   "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
+                                   "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
+                                   "Ax": Ax_true_er_plot[i][j],
+                                   "Ay": Ah_true_er_plot[i][j], "Az": 0, "C": x_est_fin[i][0],
+                                   "alpha": alpha_tr_er_plot[i][j],
+                                   "DistanceR": R_est_full_plot[i][j], "AzR": 0,
+                                   "VrR": Vr_est_full_plot[i][j], "EvR": theta_est_full_plot[i][j],
+                                   "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            for i in range(len(t_fin)):
+                points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                               "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
+                               "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
+                               "Ax": Ax_true_fin[i],
+                               "Ay": Ah_true_fin[i], "Az": 0, "C": x_est_fin[-1][0],
+                               "alpha": alpha_true_fin[i],
+                               "DistanceR": R_true_fin[i], "AzR": 0,
+                               "VrR": Vr_true_fin[i], "EvR": theta_true_fin[i],
+                               "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            track_points["points"] = points
+            track_points["endpoint_x"] = x_true_fin[-1]
+            track_points["endpoint_y"] = h_true_fin[-1]
+            track_points["endpoint_z"] = z
+            track_points["endpoint_GK_x"] = x_fall_gk[0]
+            track_points["endpoint_GK_z"] = z_fall_gk[0]
+            track_points["Vb"] = Vb
+            track_points["Vd"] = Vd
+            track_points["SKO_R"] = 0.
+            track_points["SKO_V"] = 0.
+            track_points["SKO_theta"] = 0.
+
+            track_points["valid"] = True
+
+            config.flag_return = 1
+
+        if config.bullet_type == 5:  # 122 - art
+            parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
+
+            winlen = 30
+            step_sld = 10
+
+            R_meas, Vr_meas, theta_meas = func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, config.ksi_Vr,
+                                                           config.n1, config.n2,
+                                                           config.ksi_theta,
+                                                           config.theta_n1)
+
+            xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
+            Vr_meas_tr, theta_meas_tr = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_H,
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, config.k0,
+                                                            config.dR, t_meas,
+                                                            R_meas, Vr_meas, theta_meas, winlen,
+                                                            step_sld, parameters_bounds)
+
+            t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
+            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
+            Ah_true_er_plot = func_quad_piece_estimation(
+                xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
+                config.m, g, config.loc_X, config.loc_Y, config.loc_H)
+
+            t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, alpha_true_fin, \
+            A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(config.m, g, xhy_0_set, x_est_fin,
+                                                                                meas_t_ind,
+                                                                                window_set, t_meas_tr, config.loc_X,
+                                                                                config.loc_Y,
+                                                                                config.loc_H)
+            K1 = 0.00461217647718868
+            K2 = -2.04678100654676e-07
+
+            z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
+
+            z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
+                               config.wind_direction, config.az)
+
+            z = z_wind + z_deriv
+
+            x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
+                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
+            Vd = 3 * sigma_n_R_loc
+
+            track_points = {}
+            points = []
+
+            for i in range(len(t_meas_plot) - 1):
+                for j in range(len(t_meas_plot[i])):
+                    points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                                   "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
+                                   "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
+                                   "Ax": Ax_true_er_plot[i][j],
+                                   "Ay": Ah_true_er_plot[i][j], "Az": 0, "C": x_est_fin[i][0],
+                                   "alpha": alpha_tr_er_plot[i][j],
+                                   "DistanceR": R_est_full_plot[i][j], "AzR": 0,
+                                   "VrR": Vr_est_full_plot[i][j], "EvR": theta_est_full_plot[i][j],
+                                   "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            for i in range(len(t_fin)):
+                points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                               "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
+                               "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
+                               "Ax": Ax_true_fin[i],
+                               "Ay": Ah_true_fin[i], "Az": 0, "C": x_est_fin[-1][0],
+                               "alpha": alpha_true_fin[i],
+                               "DistanceR": R_true_fin[i], "AzR": 0,
+                               "VrR": Vr_true_fin[i], "EvR": theta_true_fin[i],
+                               "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            track_points["points"] = points
+            track_points["endpoint_x"] = x_true_fin[-1]
+            track_points["endpoint_y"] = h_true_fin[-1]
+            track_points["endpoint_z"] = z
+            track_points["endpoint_GK_x"] = x_fall_gk[0]
+            track_points["endpoint_GK_z"] = z_fall_gk[0]
+            track_points["Vb"] = Vb
+            track_points["Vd"] = Vd
+            track_points["SKO_R"] = 0.
+            track_points["SKO_V"] = 0.
+            track_points["SKO_theta"] = 0.
+            track_points["valid"] = True
+
+            config.flag_return = 1
+
+        if config.bullet_type == 6:  # 152 - act-react
+
+            winlen = 30
+            step_sld = 10
+
+            t_ind_end_1part, t_ind_start_2part = func_active_reactive(t_meas, R_meas, Vr_meas)
+
+            t_meas_1 = t_meas[:t_ind_end_1part]
+            R_meas_1 = R_meas[:t_ind_end_1part]
+            Vr_meas_1 = Vr_meas[:t_ind_end_1part]
+            theta_meas_1 = theta_meas[:t_ind_end_1part]
+
+            t_meas_2 = t_meas[t_ind_start_2part:]
+            R_meas_2 = R_meas[t_ind_start_2part:]
+            Vr_meas_2 = Vr_meas[t_ind_start_2part:]
+            theta_meas_2 = theta_meas[t_ind_start_2part:]
+
+            R_meas_1, Vr_meas_1, theta_meas_1 = func_filter_data(t_meas_1, R_meas_1, Vr_meas_1, theta_meas_1,
+                                                                 config.ksi_Vr,
+                                                                 config.n1, config.n2,
+                                                                 config.ksi_theta,
+                                                                 config.theta_n1)
+
+            R_meas_2, Vr_meas_2, theta_meas_2 = func_filter_data(t_meas_2, R_meas_2, Vr_meas_2, theta_meas_2,
+                                                                 config.ksi_Vr,
+                                                                 config.n1, config.n2,
+                                                                 config.ksi_theta,
+                                                                 config.theta_n1)
+
+            parameters_bounds_1 = [config.k_bounds[0], config.v0_bounds[0], config.dR_bounds[0], config.angle_bounds[0]]
+            parameters_bounds_2 = [config.k_bounds[1], config.v0_bounds[1], config.dR_bounds[1], config.angle_bounds[1]]
+
+            xhy_0_set_1, x_est_fin_1, meas_t_ind_1, window_set_1, t_meas_tr_1, R_meas_tr_1, \
+            Vr_meas_tr_1, theta_meas_tr_1 = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_H,
+                                                                config.can_Y,
+                                                                config.m, g, config.SKO_R,
+                                                                config.SKO_Vr, config.SKO_theta, config.k0,
+                                                                config.dR, t_meas_1,
+                                                                R_meas_1, Vr_meas_1, theta_meas_1, winlen,
+                                                                step_sld, parameters_bounds_1)
+
+            xhy_0_set_2, x_est_fin_2, meas_t_ind_2, window_set_2, t_meas_tr_2, R_meas_tr_2, \
+            Vr_meas_tr_2, theta_meas_tr_2 = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_H,
+                                                                config.can_Y,
+                                                                config.m, g, config.SKO_R,
+                                                                config.SKO_Vr, config.SKO_theta, config.k0,
+                                                                config.dR, t_meas_2,
+                                                                R_meas_2, Vr_meas_2, theta_meas_2, winlen,
+                                                                step_sld, parameters_bounds_2)
+
+            t_meas_plot_1, x_tr_er_plot_1, h_tr_er_plot_1, R_est_full_plot_1, Vr_est_full_plot_1, \
+            theta_est_full_plot_1, Vx_true_er_plot_1, Vh_true_er_plot_1, V_abs_full_plot_1, alpha_tr_er_plot_1, \
+            A_abs_est_plot_1, Ax_true_er_plot_1, Ah_true_er_plot_1 = func_quad_piece_estimation(
+                xhy_0_set_1, x_est_fin_1, meas_t_ind_1, window_set_1, t_meas_tr_1, N,
+                config.m, g, config.loc_X, config.loc_Y, config.loc_H)
+
+            t_meas_plot_2, x_tr_er_plot_2, h_tr_er_plot_2, R_est_full_plot_2, Vr_est_full_plot_2, \
+            theta_est_full_plot_2, Vx_true_er_plot_2, Vh_true_er_plot_2, V_abs_full_plot_2, alpha_tr_er_plot_2, \
+            A_abs_est_plot_2, Ax_true_er_plot_2, Ah_true_er_plot_2 = func_quad_piece_estimation(
+                xhy_0_set_2, x_est_fin_2, meas_t_ind_2, window_set_2, t_meas_tr_2, N,
+                config.m, g, config.loc_X, config.loc_Y, config.loc_H)
+
+            t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
+            alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(config.m, g,
+                                                                                                xhy_0_set_2,
+                                                                                                x_est_fin_2,
+                                                                                                meas_t_ind_2,
+                                                                                                window_set_2,
+                                                                                                t_meas_tr_2,
+                                                                                                config.loc_X,
+                                                                                                config.loc_Y,
+                                                                                                config.loc_H)
+
+            t_tr_act_est, x_tr_act_est, h_tr_act_est, R_tr_act_est, Vr_tr_act_est, theta_tr_act_est, Vx_tr_act_est, \
+            Vh_tr_act_est, V_abs_tr_act_est, alpha_tr_act_est, A_abs_tr_act_est, Ax_tr_act_est, Ah_tr_act_est \
+                = func_active_reactive_trajectory(x_tr_er_plot_1, h_tr_er_plot_1,
+                                                  t_meas_plot_1,
+                                                  x_tr_er_plot_2, h_tr_er_plot_2,
+                                                  t_meas_plot_2,
+                                                  N, config.loc_H, config.loc_Y, config.loc_H)
+
+            z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
+                               config.wind_direction, config.az)
+
+            z = z_wind
+
+            x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
+                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
+            Vd = 3 * sigma_n_R_loc
+
+            track_points = {}
+            points = []
+
+            for i in range(len(t_meas_plot_1)):
+                for j in range(len(t_meas_plot_1[i])):
+                    points.append({"t": t_meas_plot_1[i][j], "x": x_tr_er_plot_1[i][j], "y": h_tr_er_plot_1[i][j],
+                                   "z": 0, "V": V_abs_full_plot_1[i][j], "Vx": Vx_true_er_plot_1[i][j],
+                                   "Vy": Vh_true_er_plot_1[i][j], "Vz": 0, "A": A_abs_est_plot_1[i][j],
+                                   "Ax": Ax_true_er_plot_1[i][j],
+                                   "Ay": Ah_true_er_plot_1[i][j], "Az": 0, "C": x_est_fin_1[i][0],
+                                   "alpha": alpha_tr_er_plot_1[i][j],
+                                   "DistanceR": R_est_full_plot_1[i][j], "AzR": 0,
+                                   "VrR": Vr_est_full_plot_1[i][j], "EvR": theta_est_full_plot_1[i][j],
+                                   "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            for i in range(len(t_tr_act_est)):
+                points.append({"t": t_tr_act_est[i], "x": x_tr_act_est[i], "y": h_tr_act_est[i],
+                               "z": 0, "V": V_abs_tr_act_est[i], "Vx": Vx_tr_act_est[i],
+                               "Vy": Vh_tr_act_est[i], "Vz": 0, "A": A_abs_tr_act_est[i],
+                               "Ax": Ax_tr_act_est[i],
+                               "Ay": Ah_tr_act_est[i], "Az": 0, "C": x_est_fin_1[-1][0],
+                               "alpha": alpha_tr_act_est[i],
+                               "DistanceR": R_tr_act_est[i], "AzR": 0,
+                               "VrR": Vr_tr_act_est[i], "EvR": theta_tr_act_est[i],
+                               "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            for i in range(len(t_meas_plot_2) - 1):
+                for j in range(len(t_meas_plot_2[i])):
+                    points.append({"t": t_meas_plot_2[i][j], "x": x_tr_er_plot_2[i][j], "y": h_tr_er_plot_2[i][j],
+                                   "z": 0, "V": V_abs_full_plot_2[i][j], "Vx": Vx_true_er_plot_2[i][j],
+                                   "Vy": Vh_true_er_plot_2[i][j], "Vz": 0, "A": A_abs_est_plot_2[i][j],
+                                   "Ax": Ax_true_er_plot_2[i][j],
+                                   "Ay": Ah_true_er_plot_2[i][j], "Az": 0, "C": x_est_fin_2[i][0],
+                                   "alpha": alpha_tr_er_plot_2[i][j],
+                                   "DistanceR": R_est_full_plot_2[i][j], "AzR": 0,
+                                   "VrR": Vr_est_full_plot_2[i][j], "EvR": theta_est_full_plot_2[i][j],
+                                   "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            for i in range(len(t_fin)):
+                points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                               "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
+                               "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
+                               "Ax": Ax_true_fin[i],
+                               "Ay": Ah_true_fin[i], "Az": 0, "C": x_est_fin_2[-1][0],
+                               "alpha": alpha_true_fin[i],
+                               "DistanceR": R_true_fin[i], "AzR": 0,
+                               "VrR": Vr_true_fin[i], "EvR": theta_true_fin[i],
+                               "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            track_points["points"] = points
+            track_points["endpoint_x"] = x_true_fin[-1]
+            track_points["endpoint_y"] = h_true_fin[-1]
+            track_points["endpoint_z"] = z
+            track_points["endpoint_GK_x"] = x_fall_gk[0]
+            track_points["endpoint_GK_z"] = z_fall_gk[0]
+            track_points["Vb"] = Vb
+            track_points["Vd"] = Vd
+            track_points["SKO_R"] = 0.
+            track_points["SKO_V"] = 0.
+            track_points["SKO_theta"] = 0.
+            track_points["valid"] = True
+
+            config.flag_return = 1
+
+        if config.bullet_type == 7:  # 152 art
+
+            parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
+
+            winlen = 30
+            step_sld = 10
+
+            R_meas, Vr_meas, theta_meas = func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, config.ksi_Vr,
+                                                           config.n1, config.n2,
+                                                           config.ksi_theta,
+                                                           config.theta_n1)
+
+            xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
+            Vr_meas_tr, theta_meas_tr = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_H,
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, config.k0,
+                                                            config.dR, t_meas,
+                                                            R_meas, Vr_meas, theta_meas, winlen,
+                                                            step_sld, parameters_bounds)
+
+            t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
+            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
+            Ah_true_er_plot = func_quad_piece_estimation(
+                xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
+                config.m, g, config.loc_X, config.loc_Y, config.loc_H)
+
+            t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, alpha_true_fin, \
+            A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(config.m, g, xhy_0_set, x_est_fin,
+                                                                                meas_t_ind,
+                                                                                window_set, t_meas_tr, config.loc_X,
+                                                                                config.loc_Y,
+                                                                                config.loc_H)
+            K1 = 0.00484165821041086
+            K2 = -1.26463194945151e-07
+
+            z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
+
+            z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
+                               config.wind_direction, config.az)
+
+            z = z_wind + z_deriv
+
+            x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
+                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
+            Vd = 3 * sigma_n_R_loc
+
+            track_points = {}
+            points = []
+
+            for i in range(len(t_meas_plot) - 1):
+                for j in range(len(t_meas_plot[i])):
+                    points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                                   "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
+                                   "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
+                                   "Ax": Ax_true_er_plot[i][j],
+                                   "Ay": Ah_true_er_plot[i][j], "Az": 0, "C": x_est_fin[i][0],
+                                   "alpha": alpha_tr_er_plot[i][j],
+                                   "DistanceR": R_est_full_plot[i][j], "AzR": 0,
+                                   "VrR": Vr_est_full_plot[i][j], "EvR": theta_est_full_plot[i][j],
+                                   "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            for i in range(len(t_fin)):
+                points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                               "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
+                               "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
+                               "Ax": Ax_true_fin[i],
+                               "Ay": Ah_true_fin[i], "Az": 0, "C": x_est_fin[-1][0],
+                               "alpha": alpha_true_fin[i],
+                               "DistanceR": R_true_fin[i], "AzR": 0,
+                               "VrR": Vr_true_fin[i], "EvR": theta_true_fin[i],
+                               "valid_R": 0, "valid_V": 0, "valid_theta": 0})
+
+            track_points["points"] = points
+            track_points["endpoint_x"] = x_true_fin[-1]
+            track_points["endpoint_y"] = h_true_fin[-1]
+            track_points["endpoint_z"] = z
+            track_points["endpoint_GK_x"] = x_fall_gk[0]
+            track_points["endpoint_GK_z"] = z_fall_gk[0]
+            track_points["Vb"] = Vb
+            track_points["Vd"] = Vd
+            track_points["SKO_R"] = 0.
+            track_points["SKO_V"] = 0.
+            track_points["SKO_theta"] = 0.
+            track_points["valid"] = True
+
+            config.flag_return = 1
+
+        if config.flag_return == 1:
             config.track = track_points
-
-            # track что вывести туда и посчитать
-
 
         flag = 1
 
