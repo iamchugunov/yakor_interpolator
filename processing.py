@@ -87,12 +87,7 @@ def process_measurements(data, config):
         theta_meas = np.zeros(Ndlen)
 
         for i in range(Ndlen):
-            # считываем пришедшие данные
-<<<<<<< HEAD
             t_meas[i] = data["points"][i]["execTime_sec"]
-=======
-            t_meas[i] = data["points"][i]["execTime"]
->>>>>>> e24ebce008f5aeb10841437b850846e962b3d94c
             R_meas[i] = data["points"][i]["R"]
             Vr_meas[i] = abs(data["points"][i]["Vr"])
             theta_meas[i] = np.deg2rad(data["points"][i]["Epsilon"])
