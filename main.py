@@ -3,7 +3,6 @@ from config import Config
 import json
 import processing as pr
 
-
 config = Config()
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -14,19 +13,20 @@ client.connect(config.ADDR)
 # 0х150003 - массив точек траекторий
 
 while True:
+
     rdata = client.recv(4)
+
     if len(rdata) < 4:
         break
+
     rcv_size = int.from_bytes(rdata, "little")
-    rdata = client.recv(4)
-    if len(rdata) < 4:
-        break
     rcv_type = int.from_bytes(rdata, "little")
 
     print("Size {}".format(rcv_size))
     print("Type {:0x}".format(rcv_type))
 
     data = client.recv(rcv_size)
+
     if len(data) == 0:
         break
     last_bytes = rcv_size - len(data)
@@ -62,7 +62,4 @@ while True:
                 client.sendall(data2send)
 
             else:
-                print("nen")
-
-
-
+                print("nan")

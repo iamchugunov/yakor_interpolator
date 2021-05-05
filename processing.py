@@ -1,12 +1,10 @@
 import numpy as np
 import pymap3d as pm
 
-
 from function import func_linear_piece_app, func_linear_piece_estimation, \
     func_quad_piece_app, func_quad_piece_estimation, func_derivation, \
     func_trajectory_end_linear, func_trajectory_end_quad, func_filter_data, func_active_reactive, \
     func_active_reactive_trajectory, func_wind, func_tochka_fall, func_derivation_bullet
-
 
 def process_initial_data(mes, config):
     # blh2ENU для локатора
@@ -72,12 +70,18 @@ def process_initial_data(mes, config):
 def process_measurements(data, config):
     if config.ini_data_flag:
 
-        parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
         N = 300
         g = 9.8155
 
-        sigma_n_R_loc = 5
-        sigma_n_theta = 0.1
+        sko_R_tz = 5
+        sko_Vr_tz = 0.5
+        sko_theta_tz = 0.1
+
+        K_inch = 39.3701
+        K_gran = 15432.4
+        K_fut = 3.28084
+
+        parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
 
         Ndlen = len(data["points"])
 
@@ -93,7 +97,7 @@ def process_measurements(data, config):
             theta_meas[i] = np.deg2rad(data["points"][i]["Epsilon"])
 
         if config.bullet_type == 1 or config.bullet_type == 2:  # 5.45 bullet or 7.65 bullet
-
+            # параметры - задаем сами
             winlen = 10
             step_sld = 2
 
@@ -123,9 +127,8 @@ def process_measurements(data, config):
                                                                                 window_set, t_meas_tr, config.loc_X,
                                                                                 config.loc_Y,
                                                                                 config.loc_H)
-            K_inch = 39.3701
-            K_gran = 15432.4
-            K_fut = 3.28084
+
+            # для пули требуется учитывать и ветер и деривацию
 
             z_deriv = func_derivation_bullet(config.m, config.d, config.l, config.eta, K_inch, K_gran, K_fut, config.v0, t_fin[-1])
 
@@ -135,10 +138,12 @@ def process_measurements(data, config):
             z = z_wind + z_deriv
 
             x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
-                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+                                                    config.az, sko_theta_tz, sko_R_tz)
 
-            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
-            Vd = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
+            # вынести Vb и Vd в функции
+
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sko_theta_tz))
+            Vd = x_true_fin[-1] * np.sin(3 * np.deg2rad(sko_theta_tz))
 
             track_points = {}
             points = []
@@ -222,10 +227,10 @@ def process_measurements(data, config):
             z = z_wind
 
             x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
-                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+                                                    config.az, sko_theta_tz, sko_R_tz)
 
-            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
-            Vd = 3 * sigma_n_R_loc
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sko_theta_tz))
+            Vd = 3 * sko_R_tz
 
             track_points = {}
             points = []
@@ -321,10 +326,10 @@ def process_measurements(data, config):
             z = z_wind
 
             x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
-                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+                                                    config.az, sko_theta_tz, sko_R_tz)
 
-            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
-            Vd = 3 * sigma_n_R_loc
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sko_theta_tz))
+            Vd = 3 * sko_R_tz
 
             track_points = {}
             points = []
@@ -411,10 +416,10 @@ def process_measurements(data, config):
             z = z_wind + z_deriv
 
             x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
-                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+                                                    config.az, sko_theta_tz, sko_R_tz)
 
-            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
-            Vd = 3 * sigma_n_R_loc
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sko_theta_tz))
+            Vd = 3 * sko_R_tz
 
             track_points = {}
             points = []
@@ -544,10 +549,10 @@ def process_measurements(data, config):
             z = z_wind
 
             x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
-                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+                                                    config.az, sko_theta_tz, sko_R_tz)
 
-            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
-            Vd = 3 * sigma_n_R_loc
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sko_theta_tz))
+            Vd = 3 * sko_R_tz
 
             track_points = {}
             points = []
@@ -657,10 +662,10 @@ def process_measurements(data, config):
             z = z_wind + z_deriv
 
             x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], h_true_fin[-1], config.can_B, config.can_L,
-                                                    config.az, sigma_n_theta, sigma_n_R_loc)
+                                                    config.az, sko_theta_tz, sko_R_tz)
 
-            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sigma_n_theta))
-            Vd = 3 * sigma_n_R_loc
+            Vb = x_true_fin[-1] * np.sin(3 * np.deg2rad(sko_theta_tz))
+            Vd = 3 * sko_R_tz
 
             track_points = {}
             points = []
