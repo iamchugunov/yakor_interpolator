@@ -1,4 +1,3 @@
-import os
 import json
 
 class Config():
@@ -11,6 +10,7 @@ class Config():
         self.PORT = connect_params["PORT"]
         self.ADDR = (self.IP, self.PORT)
 
+        # пришли данные или нет
         self.ini_data_flag = 0
 
         # inition data
@@ -39,7 +39,7 @@ class Config():
         self.alpha = 0.
         # azimuth
         self.az = 0.
-        # heigth ??
+        # heigth
         self.hei = 0.
         # wind params
         self.wind_module = 0.
@@ -49,13 +49,13 @@ class Config():
         self.atm_pressure = 0.
 
         # bullet type
-        # 1 - 5.45 # деривация + ветер везде для боковых отклонений в с дерив
-        # 2 - 7.62 # деривация
+        # 1 - 5.45
+        # 2 - 7.62
         # 3 - 82
-        # 4 - 122 reactive # ссрзо - участочек - часть с обрезкой
-        # 5 - 122 art # квадратично - масса снаряда меняется
-        # 6 - 152 act - reactive # с двумя до окошками
-        # 7 - 152 art # все как к пулям и к минам - квадртатичное
+        # 4 - 122 reactive
+        # 5 - 122 art
+        # 6 - 152 act - reactive
+        # 7 - 152 art
         self.bullet_type = 0
 
         # bullet params
@@ -93,9 +93,6 @@ class Config():
         self.ksi_theta = 0.
         self.theta_n1 = 0.
 
-        self.flag_return = 0
-
-        # читаем файл БД снарядов и запоминаем их в список всех снарядов
         self.bullets = []
 
         with open('bullets.json', 'r') as file:
@@ -104,9 +101,9 @@ class Config():
         print(len(self.bullets))
         print(self.bullets)
 
-
-
-        # track ??
+        # flag_return
+        self.flag_return = 0
+        # ыходная кодограмма
         self.track = []
 
 

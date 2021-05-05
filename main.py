@@ -15,11 +15,13 @@ client.connect(config.ADDR)
 while True:
 
     rdata = client.recv(4)
-
     if len(rdata) < 4:
         break
-
     rcv_size = int.from_bytes(rdata, "little")
+
+    rdata = client.recv(4)
+    if len(rdata) < 4:
+        break
     rcv_type = int.from_bytes(rdata, "little")
 
     print("Size {}".format(rcv_size))
@@ -32,8 +34,6 @@ while True:
     last_bytes = rcv_size - len(data)
 
     while last_bytes > 0:
-        data = data + client.recv(last_bytes)
-
         rdata = client.recv(last_bytes)
         if len(rdata) == 0:
             break
@@ -42,7 +42,6 @@ while True:
 
     if rcv_type == 0x150001 or rcv_type == 0x150002:
         data = json.loads((data.decode()))
-        print(data)
 
         if rcv_type == 0x150001:
             pr.process_initial_data(data, config)
@@ -54,7 +53,7 @@ while True:
                 points = data["points"]
                 pr.process_measurements(data, config)
 
-                print(config.track, "track client")
+                #print(config.track, "track client")
 
                 data2send = json.dumps(config.track).encode()
                 client.sendall(len(data2send).to_bytes(4, "little"))
