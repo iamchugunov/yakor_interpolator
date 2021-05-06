@@ -202,6 +202,16 @@ def process_measurements(data, config):
             track_points["SKO_theta"] = SKO_theta
             track_points["valid"] = True
 
+            print(x_true_fin[-1], 'х - точки падения')
+            print(h_true_fin[-1], 'h - точки падения')
+
+            print(z, 'z - точки падения')
+            print(x_fall_gk[0], 'х_fall_gk - точки падения')
+            print(z_fall_gk[0], 'z_fall_gk - точки падения')
+
+            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
+
             config.flag_return = 1
 
         if config.bullet_type == 3:  # 82 mina
@@ -294,6 +304,16 @@ def process_measurements(data, config):
             track_points["SKO_V"] = SKO_V
             track_points["SKO_theta"] = SKO_theta
             track_points["valid"] = True
+
+            print(x_true_fin[-1], 'х - точки падения')
+            print(h_true_fin[-1], 'h - точки падения')
+
+            print(z, 'z - точки падения')
+            print(x_fall_gk[0], 'х_fall_gk - точки падения')
+            print(z_fall_gk[0], 'z_fall_gk - точки падения')
+
+            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
 
             config.flag_return = 1
 
@@ -404,6 +424,16 @@ def process_measurements(data, config):
             track_points["SKO_theta"] = SKO_theta
             track_points["valid"] = True
 
+            print(x_true_fin[-1], 'х - точки падения')
+            print(h_true_fin[-1], 'h - точки падения')
+
+            print(z, 'z - точки падения')
+            print(x_fall_gk[0], 'х_fall_gk - точки падения')
+            print(z_fall_gk[0], 'z_fall_gk - точки падения')
+
+            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
+
             config.flag_return = 1
 
         if config.bullet_type == 5:  # 122 - art
@@ -505,6 +535,16 @@ def process_measurements(data, config):
             track_points["SKO_V"] = SKO_V
             track_points["SKO_theta"] = SKO_theta
             track_points["valid"] = True
+
+            print(x_true_fin[-1], 'х - точки падения')
+            print(h_true_fin[-1], 'h - точки падения')
+
+            print(z, 'z - точки падения')
+            print(x_fall_gk[0], 'х_fall_gk - точки падения')
+            print(z_fall_gk[0], 'z_fall_gk - точки падения')
+
+            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
 
             config.flag_return = 1
 
@@ -636,7 +676,7 @@ def process_measurements(data, config):
                                    "Vy": Vh_true_er_plot_1[i][j], "Vz": 0, "A": A_abs_est_plot_1[i][j],
                                    "Ax": Ax_true_er_plot_1[i][j],
                                    "Ay": Ah_true_er_plot_1[i][j], "Az": 0, "C": x_est_fin_1[i][0],
-                                   "alpha": np.rag2deg(alpha_tr_er_plot_1[i][j]),
+                                   "alpha": np.rad2deg(alpha_tr_er_plot_1[i][j]),
                                    "DistanceR": R_est_full_plot_1[i][j], "AzR": 0,
                                    "VrR": Vr_est_full_plot_1[i][j], "EvR": np.rad2deg(theta_est_full_plot_1[i][j])})
 
@@ -683,6 +723,16 @@ def process_measurements(data, config):
             track_points["SKO_V"] = SKO_V
             track_points["SKO_theta"] = SKO_theta
             track_points["valid"] = True
+
+            print(x_true_fin[-1], 'х - точки падения')
+            print(h_true_fin[-1], 'h - точки падения')
+
+            print(z, 'z - точки падения')
+            print(x_fall_gk[0], 'х_fall_gk - точки падения')
+            print(z_fall_gk[0], 'z_fall_gk - точки падения')
+
+            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
 
             config.flag_return = 1
 
