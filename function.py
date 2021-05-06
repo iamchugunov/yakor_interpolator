@@ -1739,7 +1739,7 @@ def func_tochka_fall(z, x_fin, can_B, can_L, az):
     x_fall = x_fin
     z_fall = z
     x_sp_gk, y_sp_gk = BLH2XY_GK(can_B, can_L)
-    print(x_sp_gk, y_sp_gk, 'зона падения sp_gk')
+    print(x_sp_gk, y_sp_gk, 'зоны падения sp_gk')
     print(int(x_sp_gk/ 10e5), int(y_sp_gk/ 10e5), 'зоны')
     RM = np.array([[np.cos(az), np.sin(az)], [-np.sin(az), np.cos(az)]])
     deltaXY_gk = RM.dot(np.array([[z_fall], [x_fall]]))

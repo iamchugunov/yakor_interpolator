@@ -662,8 +662,6 @@ def process_measurements(data, config):
 
         if config.bullet_type == 7:  # 152 art
 
-            parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
-
             # параметры для деривации артиллерийского снаряда
             K1 = 0.00484165821041086
             K2 = -1.26463194945151e-07
