@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="b6d77691-9b53-4dce-ae52-b93f9961fb57" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/processing.py" afterDir="false" />
-    </list>
+    <list default="true" id="b6d77691-9b53-4dce-ae52-b93f9961fb57" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,8 +25,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/processing.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-9048">
-              <caret line="315" column="65" selection-start-line="315" selection-start-column="65" selection-end-line="315" selection-end-column="65" />
+            <state relative-caret-position="132">
+              <caret line="855" column="16" lean-forward="true" selection-start-line="855" selection-start-column="16" selection-end-line="855" selection-end-column="16" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -128,11 +126,11 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="-9" />
-    <option name="y" value="36" />
-    <option name="width" value="1463" />
-    <option name="height" value="939" />
+  <component name="ProjectFrameBounds">
+    <option name="x" value="2352" />
+    <option name="y" value="99" />
+    <option name="width" value="1231" />
+    <option name="height" value="832" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -277,15 +275,15 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-7" y="-7" width="1550" height="838" extended-state="6" />
+    <frame x="310" y="0" width="1231" height="832" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.122934565" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.1557789" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.45184135" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.4557143" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.17714286" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -421,8 +419,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/processing.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-9048">
-          <caret line="315" column="65" selection-start-line="315" selection-start-column="65" selection-end-line="315" selection-end-column="65" />
+        <state relative-caret-position="132">
+          <caret line="855" column="16" lean-forward="true" selection-start-line="855" selection-start-column="16" selection-end-line="855" selection-end-column="16" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>

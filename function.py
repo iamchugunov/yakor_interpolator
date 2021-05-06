@@ -1317,7 +1317,7 @@ def func_std_error(R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, sko_R_tz
     SKO_V_true = np.std(np.array(Vr_true))
     SKO_theta_true = np.std(np.array(theta_true))
 
-    print(Nlen, 'число измерений дальности без отсева')
+    print(Nlen, 'число измерений без отсева')
 
     print(len(R_true), 'число измерений дальности после отсева')
 
