@@ -88,7 +88,7 @@ def process_measurements(data, config):
         # данные ТЗ
         sko_R_tz = 5
         sko_Vr_tz = 0.5
-        sko_theta_tz = np.deg2rad(0.1)  # перевод в радианы
+        sko_theta_tz = np.deg2rad(0.1)  # перевод из градусов в радианы
 
         # данные для перевода координат
         K_inch = 39.3701
@@ -106,7 +106,7 @@ def process_measurements(data, config):
             t_meas[i] = data["points"][i]["execTime"]
             R_meas[i] = data["points"][i]["R"]
             Vr_meas[i] = abs(data["points"][i]["Vr"])
-            # перевод угла из измерений в радианы - приходи в градусах
+            # перевод угла из измерений в радианы - приходит в градусах
             theta_meas[i] = np.deg2rad(data["points"][i]["Epsilon"])
 
         if config.bullet_type == 1 or config.bullet_type == 2:  # 5.45 bullet or 7.65 bullet
@@ -763,8 +763,8 @@ def process_measurements(data, config):
             print(x_fall_gk[0], 'х_fall_gk - точки падения')
             print(z_fall_gk[0], 'z_fall_gk - точки падения')
 
-            print(SKO_R, SKO_V, SKO_theta, 'значение СКО по ТЗ')
-            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО полученное после отсева измерений')
+            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
 
             config.flag_return = 1
 
