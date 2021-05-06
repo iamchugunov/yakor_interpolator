@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b6d77691-9b53-4dce-ae52-b93f9961fb57" name="Default" comment="">
+      <change beforePath="$PROJECT_DIR$/function.py" beforeDir="false" afterPath="$PROJECT_DIR$/function.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/processing.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -27,8 +28,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/processing.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="323">
-              <caret line="721" selection-start-line="721" selection-end-line="721" />
+            <state relative-caret-position="307">
+              <caret line="684" column="40" selection-start-line="684" selection-start-column="40" selection-end-line="684" selection-end-column="40" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -39,8 +40,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/function.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="9775">
-              <caret line="1748" column="31" lean-forward="true" selection-start-line="1748" selection-start-column="31" selection-end-line="1748" selection-end-column="31" />
+            <state relative-caret-position="358">
+              <caret line="1314" lean-forward="true" selection-start-line="1314" selection-end-line="1314" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -51,8 +52,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/bullets.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state>
-              <caret column="127" selection-start-column="127" selection-end-column="128" />
+            <state relative-caret-position="102">
+              <caret line="6" column="65" selection-start-line="6" selection-start-column="65" selection-end-line="6" selection-end-column="65" />
             </state>
           </provider>
         </entry>
@@ -120,17 +121,17 @@
         <option value="$PROJECT_DIR$/processing_2.py" />
         <option value="$PROJECT_DIR$/gomain_2.py" />
         <option value="$PROJECT_DIR$/biba.py" />
-        <option value="$PROJECT_DIR$/bullets.json" />
         <option value="$PROJECT_DIR$/config.py" />
         <option value="$PROJECT_DIR$/main.py" />
+        <option value="$PROJECT_DIR$/bullets.json" />
         <option value="$PROJECT_DIR$/function.py" />
         <option value="$PROJECT_DIR$/processing.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="526" />
-    <option name="width" value="1400" />
+    <option name="x" value="387" />
+    <option name="width" value="1539" />
     <option name="height" value="1040" />
   </component>
   <component name="ProjectView">
@@ -276,16 +277,16 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="421" y="0" width="1120" height="832" extended-state="0" />
+    <frame x="310" y="0" width="1231" height="832" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.17174515" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.1557789" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.36285713" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.25779036" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.23" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.17714286" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -317,17 +318,6 @@
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
     </layout-to-restore>
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/processing.py</url>
-          <line>721</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
     <expressions id="evaluateExpression">
@@ -398,10 +388,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/bullets.json">
+    <entry file="file://$PROJECT_DIR$/config.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret column="127" selection-start-column="127" selection-end-column="128" />
+        <state relative-caret-position="51">
+          <caret line="3" column="1" lean-forward="true" selection-start-line="3" selection-start-column="1" selection-end-line="3" selection-end-column="1" />
         </state>
       </provider>
     </entry>
@@ -412,17 +402,17 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/config.json">
+    <entry file="file://$PROJECT_DIR$/bullets.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="3" column="1" lean-forward="true" selection-start-line="3" selection-start-column="1" selection-end-line="3" selection-end-column="1" />
+        <state relative-caret-position="102">
+          <caret line="6" column="65" selection-start-line="6" selection-start-column="65" selection-end-line="6" selection-end-column="65" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/function.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="9775">
-          <caret line="1748" column="31" lean-forward="true" selection-start-line="1748" selection-start-column="31" selection-end-line="1748" selection-end-column="31" />
+        <state relative-caret-position="358">
+          <caret line="1314" lean-forward="true" selection-start-line="1314" selection-end-line="1314" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
@@ -431,8 +421,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/processing.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="323">
-          <caret line="721" selection-start-line="721" selection-end-line="721" />
+        <state relative-caret-position="307">
+          <caret line="684" column="40" selection-start-line="684" selection-start-column="40" selection-end-line="684" selection-end-column="40" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>

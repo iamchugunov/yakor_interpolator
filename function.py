@@ -1101,9 +1101,9 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
            Ah_true_er_plot
 
-# оцененные значения для линейной аппроксимации в момент измерений - СКО значений
+# оцененные значения для линейной аппроксимации в момент измерений
 def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas,
-                                       theta_meas, m, g, x_L, y_L, h_L, sko_R_tz, sko_Vr_tz, sko_theta_tz):
+                                       theta_meas, m, g, x_L, y_L, h_L):
     t_err_plot = []
     R_est_full_plot = []
     Vr_est_full_plot = []
@@ -1190,40 +1190,11 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_
         Vr_est_err_plot.append(Vr_est_err)
         theta_est_err_plot.append(theta_est_err)
 
-        # выводить std
-    R_true = []
-    Vr_true = []
-    theta_true = []
+    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
 
-    for k in range(len(R_est_err_plot)):
-        for j in range(len(R_est_err_plot[k])):
-            if (-3*sko_R_tz < R_est_err_plot[k][j]) and (R_est_err_plot[k][j] < 3*sko_R_tz):
-                R_true.append(R_est_err_plot[k][j])
-
-            if (-3*sko_Vr_tz < Vr_est_err_plot[k][j]) and (Vr_est_err_plot[k][j] < 3*sko_Vr_tz):
-                Vr_true.append(Vr_est_err_plot[k][j])
-
-            if (-3*sko_theta_tz < theta_est_err_plot[k][j]) and (theta_est_err_plot[k][j] < 3*sko_theta_tz):
-                theta_true.append(theta_est_err_plot[k][j])
-
-    SKO_R_true = np.std(np.array(R_true))
-    SKO_V_true = np.std(np.array(Vr_true))
-    SKO_theta_true = np.std(np.array(theta_true))
-
-    print(len(R_est_err_plot), 'число измерений дальности без отсева')
-    print(len(R_true), 'число измерений дальности после отсева')
-
-    print(len(Vr_est_err_plot), 'число измерений скорости без отсева')
-    print(len(Vr_true), 'число измерений скорости после отсева')
-
-    print(len(theta_est_err_plot), 'число измерений угла без отсева')
-    print(len(theta_true), 'число измерений угла после отсева')
-
-    return SKO_R_true, SKO_V_true, SKO_theta_true
-
-# оцененные значения для квадратичной аппроксимации в момент измерений - СКО
+# оцененные значения для квадратичной аппроксимации в момент измерений
 def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas, theta_meas,
-                                     m, g, x_L, y_L, h_L, sko_R_tz, sko_Vr_tz, sko_theta_tz):
+                                     m, g, x_L, y_L, h_L):
     t_err_plot = []
     R_est_full_plot = []
     Vr_est_full_plot = []
@@ -1318,10 +1289,16 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
         Vr_est_err_plot.append(Vr_est_err)
         theta_est_err_plot.append(theta_est_err)
 
+
+    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
+
+def func_std_error(R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, sko_R_tz, sko_Vr_tz, sko_theta_tz):
     # выводить std
     R_true = []
     Vr_true = []
     theta_true = []
+
+    Nlen = 0
 
     for k in range(len(R_est_err_plot)):
         for j in range(len(R_est_err_plot[k])):
@@ -1334,21 +1311,23 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
             if (-3*sko_theta_tz < theta_est_err_plot[k][j]) and (theta_est_err_plot[k][j] < 3*sko_theta_tz):
                 theta_true.append(theta_est_err_plot[k][j])
 
+            Nlen += 1
+
     SKO_R_true = np.std(np.array(R_true))
     SKO_V_true = np.std(np.array(Vr_true))
     SKO_theta_true = np.std(np.array(theta_true))
 
-    print(len(R_est_err_plot), 'число измерений дальности без отсева')
+    print(Nlen, 'число измерений дальности без отсева')
+
     print(len(R_true), 'число измерений дальности после отсева')
 
-    print(len(Vr_est_err_plot), 'число измерений скорости без отсева')
     print(len(Vr_true), 'число измерений скорости после отсева')
 
-    print(len(theta_est_err_plot), 'число измерений угла без отсева')
     print(len(theta_true), 'число измерений угла после отсева')
 
-
     return SKO_R_true, SKO_V_true, SKO_theta_true
+
+
 
 # оценка измерений до точки падения для линейной аппроксимации
 def func_trajectory_end_linear(m, g, xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, x_L, y_L, h_L):
