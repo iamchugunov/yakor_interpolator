@@ -883,6 +883,7 @@ def process_measurements(data, config):
             config.flag_return = 1
 
         if config.flag_return == 1:
+
             config.track = track_points
             config.track_meas = track_meas
 

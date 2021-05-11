@@ -53,8 +53,6 @@ while True:
                 points = data["points"]
                 pr.process_measurements(data, config)
 
-                #print(config.track, "track client")
-
                 data2send = json.dumps(config.track).encode()
                 client.sendall(len(data2send).to_bytes(4, "little"))
                 client.sendall((0x150003).to_bytes(4, "little"))

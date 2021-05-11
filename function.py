@@ -1304,7 +1304,7 @@ def func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err_plot, Vr_
                         sko_R_tz, sko_Vr_tz, sko_theta_tz):
     # выводить std
     track_meas = {}
-    points = []
+    meas = []
 
     # валидные точки - 0, если не валидные 1 ( СКО больше ТЗ)
     valid_R = []
@@ -1343,12 +1343,12 @@ def func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err_plot, Vr_
     SKO_V_true = np.std(np.array(Vr_true))
     SKO_theta_true = np.std(np.array(theta_true))
 
-    for i in range(t_meas):
-        points.append({"t": t_meas[i], "R": R_meas[i], "Vr": Vr_meas[i], "theta": np.rad2deg(theta_meas[i]),
+    for i in range(len(t_meas)):
+        meas.append({"t": t_meas[i], "R": R_meas[i], "Vr": Vr_meas[i], "theta": np.rad2deg(theta_meas[i]),
                        "valid_R": valid_R[i],
                        "valid_Vr": valid_Vr[i], "valid_theta": valid_theta[i]})
 
-    track_meas["points"] = points
+    track_meas["meas"] = meas
 
     print(Nlen, 'число измерений без отсева')
 
