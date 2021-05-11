@@ -5,7 +5,7 @@ from function import func_linear_piece_app, func_linear_piece_estimation, \
     func_quad_piece_app, func_quad_piece_estimation, func_derivation, \
     func_trajectory_end_linear, func_trajectory_end_quad, func_filter_data, func_active_reactive, \
     func_active_reactive_trajectory, func_wind, func_tochka_fall, func_derivation_bullet, \
-    func_linear_piece_estimation_error, func_quad_piece_estimation_error, func_std_error
+    func_linear_piece_estimation_error, func_quad_piece_estimation_error, func_std_error, func_std_error_meas
 
 
 def process_initial_data(mes, config):
@@ -148,8 +148,10 @@ def process_measurements(data, config):
                                                                                     config.loc_X,
                                                                                     config.loc_Y, config.loc_Z)
 
-            SKO_R, SKO_V, SKO_theta = func_std_error(R_est_err, Vr_est_err, theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                     sko_theta_tz)
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+                                                                      Vr_est_err,
+                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
+                                                                      sko_theta_tz)
 
             # для пуль требуется учитывать и ветер и деривацию
             z_deriv = func_derivation_bullet(config.m, config.d, config.l, config.eta, K_inch, K_gran, K_fut, config.v0,
@@ -247,15 +249,17 @@ def process_measurements(data, config):
                 config.loc_Z)
 
             R_est_err, Vr_est_err, theta_est_err = func_linear_piece_estimation_error(xhy_0_set, x_est_fin,
-                                                                                    meas_t_ind, window_set, t_meas,
-                                                                                    R_meas_filter,
-                                                                                    Vr_meas_filter,
-                                                                                    theta_meas_filter, config.m, g,
-                                                                                    config.loc_X,
-                                                                                    config.loc_Y, config.loc_Z)
+                                                                                      meas_t_ind, window_set, t_meas,
+                                                                                      R_meas_filter,
+                                                                                      Vr_meas_filter,
+                                                                                      theta_meas_filter, config.m, g,
+                                                                                      config.loc_X,
+                                                                                      config.loc_Y, config.loc_Z)
 
-            SKO_R, SKO_V, SKO_theta = func_std_error(R_est_err, Vr_est_err, theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                     sko_theta_tz)
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+                                                                      Vr_est_err,
+                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
+                                                                      sko_theta_tz)
             # для мин учитывается только ветер
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                config.wind_direction, config.az)
@@ -373,8 +377,10 @@ def process_measurements(data, config):
                                                                                     config.loc_X,
                                                                                     config.loc_Y, config.loc_Z)
 
-            SKO_R, SKO_V, SKO_theta = func_std_error(R_est_err, Vr_est_err, theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                     sko_theta_tz)
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+                                                                      Vr_est_err,
+                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
+                                                                      sko_theta_tz)
 
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                config.wind_direction, config.az)
@@ -482,8 +488,10 @@ def process_measurements(data, config):
                                                                                     config.loc_X,
                                                                                     config.loc_Y, config.loc_Z)
 
-            SKO_R, SKO_V, SKO_theta = func_std_error(R_est_err, Vr_est_err, theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                     sko_theta_tz)
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+                                                                      Vr_est_err,
+                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
+                                                                      sko_theta_tz)
 
             z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
 
@@ -634,26 +642,50 @@ def process_measurements(data, config):
                                                   config.loc_X, config.loc_Y, config.loc_Z)
 
             R_est_err_1, Vr_est_err_1, theta_est_err_1 = func_quad_piece_estimation_error(xhy_0_set_1, x_est_fin_1,
-                                                                                    meas_t_ind_1, window_set_1, t_meas,
-                                                                                    R_meas_1_filter,
-                                                                                    Vr_meas_1_filter,
-                                                                                    theta_meas_1_filter, config.m, g,
-                                                                                    config.loc_X,
-                                                                                    config.loc_Y, config.loc_Z)
+                                                                                          meas_t_ind_1, window_set_1,
+                                                                                          t_meas,
+                                                                                          R_meas_1_filter,
+                                                                                          Vr_meas_1_filter,
+                                                                                          theta_meas_1_filter, config.m,
+                                                                                          g,
+                                                                                          config.loc_X,
+                                                                                          config.loc_Y, config.loc_Z)
+
             R_est_err_2, Vr_est_err_2, theta_est_err_2 = func_quad_piece_estimation_error(xhy_0_set_2, x_est_fin_2,
-                                                                                    meas_t_ind_2, window_set_2, t_meas,
-                                                                                    R_meas_2_filter,
-                                                                                    Vr_meas_2_filter,
-                                                                                    theta_meas_2_filter, config.m, g,
-                                                                                    config.loc_X,
-                                                                                    config.loc_Y, config.loc_Z)
+                                                                                          meas_t_ind_2, window_set_2,
+                                                                                          t_meas,
+                                                                                          R_meas_2_filter,
+                                                                                          Vr_meas_2_filter,
+                                                                                          theta_meas_2_filter, config.m,
+                                                                                          g,
+                                                                                          config.loc_X,
+                                                                                          config.loc_Y, config.loc_Z)
             for i in range(len(R_est_err_2)):
                 R_est_err_1.append(R_est_err_2[i])
                 Vr_est_err_1.append(Vr_est_err_2[i])
                 theta_est_err_1.append(theta_est_err_2[i])
 
-            SKO_R, SKO_V, SKO_theta = func_std_error(R_est_err_1, Vr_est_err_1, theta_est_err_1, sko_R_tz, sko_Vr_tz,
-                                                     sko_theta_tz)
+            t = []
+            R = []
+            Vr = []
+            theta = []
+
+            for i in range(len(t_meas_1)):
+                t.append(t_meas_1[i])
+                R.append(R_meas_1[i])
+                Vr.append(Vr_meas_1[i])
+                theta.append(theta_meas_1[i])
+
+            for i in range(len(t_meas_2)):
+                t.append(t_meas_2[i])
+                R.append(R_meas_2[i])
+                Vr.append(Vr_meas_2[i])
+                theta.append(theta_meas_2[i])
+
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t, R, Vr, theta, R_est_err_1, Vr_est_err_1,
+                                                                      theta_est_err_1,
+                                                                      sko_R_tz, sko_Vr_tz,
+                                                                      sko_theta_tz)
 
             # учитывается только ветер
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
@@ -783,8 +815,10 @@ def process_measurements(data, config):
                                                                                     config.loc_X,
                                                                                     config.loc_Y, config.loc_Z)
 
-            SKO_R, SKO_V, SKO_theta = func_std_error(R_est_err, Vr_est_err, theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                     sko_theta_tz)
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+                                                                      Vr_est_err,
+                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
+                                                                      sko_theta_tz)
 
             z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
 
@@ -850,6 +884,7 @@ def process_measurements(data, config):
 
         if config.flag_return == 1:
             config.track = track_points
+            config.track_meas = track_meas
 
         flag = 1
 

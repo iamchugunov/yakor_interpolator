@@ -81,6 +81,7 @@ def kalman_filter_theta(x_est_prev, D_x_prev, y_meas, T, ksi_theta, theta_n1):
 
     return x_est, D_x
 
+
 # фильтрация Калманом измерений дальности и скорости
 def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
     F = np.array([[1, T], [0, 1]])
@@ -99,6 +100,7 @@ def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
     x_est = x_ext + K.dot(y_meas - H.dot(x_ext))
 
     return x_est, D_x
+
 
 # формирование фильтрованных массивов измерений
 def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_theta, theta_n1):
@@ -131,6 +133,7 @@ def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_th
     theta_meas = x_est_theta[:, 0]
 
     return R_meas, Vr_meas, theta_meas
+
 
 # разбиение на участки для активно-реактивного снаряда - type_bullet = 6
 def func_active_reactive(t_meas, R_meas, Vr_meas):
@@ -470,6 +473,7 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
 
     return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
 
+
 # квадратичная аппроксимация
 def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
                         R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds):
@@ -801,6 +805,7 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
 
     return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
 
+
 # оценка измерений для линейной аппроксимации
 def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, m, g, x_L, y_L, h_L):
     N = 300
@@ -943,6 +948,7 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t
     return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
            Ah_true_er_plot
+
 
 # оценка измерений для квадратичной аппроксимации
 def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, m, g, x_L, y_L, h_L):
@@ -1101,6 +1107,7 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
            Ah_true_er_plot
 
+
 # оцененные значения для линейной аппроксимации в момент измерений
 def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas,
                                        theta_meas, m, g, x_L, y_L, h_L):
@@ -1191,6 +1198,7 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_
         theta_est_err_plot.append(theta_est_err)
 
     return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
+
 
 # оцененные значения для квадратичной аппроксимации в момент измерений
 def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas, theta_meas,
@@ -1292,8 +1300,17 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
 
     return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
 
-def func_std_error(R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, sko_R_tz, sko_Vr_tz, sko_theta_tz):
+def func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err_plot, Vr_est_err_plot, theta_est_err_plot,
+                        sko_R_tz, sko_Vr_tz, sko_theta_tz):
     # выводить std
+    track_meas = {}
+    points = []
+
+    # валидные точки - 0, если не валидные 1 ( СКО больше ТЗ)
+    valid_R = []
+    valid_Vr = []
+    valid_theta = []
+
     R_true = []
     Vr_true = []
     theta_true = []
@@ -1302,20 +1319,35 @@ def func_std_error(R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, sko_R_tz
 
     for k in range(len(R_est_err_plot)):
         for j in range(len(R_est_err_plot[k])):
-            if (-3*sko_R_tz < R_est_err_plot[k][j]) and (R_est_err_plot[k][j] < 3*sko_R_tz):
+            if (-3 * sko_R_tz < R_est_err_plot[k][j]) and (R_est_err_plot[k][j] < 3 * sko_R_tz):
                 R_true.append(R_est_err_plot[k][j])
+                valid_R.append(0)
+            else:
+                valid_R.append(1)
 
-            if (-3*sko_Vr_tz < Vr_est_err_plot[k][j]) and (Vr_est_err_plot[k][j] < 3*sko_Vr_tz):
+            if (-3 * sko_Vr_tz < Vr_est_err_plot[k][j]) and (Vr_est_err_plot[k][j] < 3 * sko_Vr_tz):
                 Vr_true.append(Vr_est_err_plot[k][j])
+                valid_Vr.append(0)
+            else:
+                valid_Vr.append(1)
 
-            if (-3*sko_theta_tz < theta_est_err_plot[k][j]) and (theta_est_err_plot[k][j] < 3*sko_theta_tz):
+            if (-3 * sko_theta_tz < theta_est_err_plot[k][j]) and (theta_est_err_plot[k][j] < 3 * sko_theta_tz):
                 theta_true.append(theta_est_err_plot[k][j])
+                valid_theta.append(0)
+            else:
+                valid_theta.append(1)
 
             Nlen += 1
 
     SKO_R_true = np.std(np.array(R_true))
     SKO_V_true = np.std(np.array(Vr_true))
     SKO_theta_true = np.std(np.array(theta_true))
+
+    for i in range(Nlen):
+        points.append({"t": t_meas[i], "R": R_meas[i], "Vr": Vr_meas[i], "theta": theta_meas[i], "valid_R": valid_R[i],
+                       "valid_Vr": valid_Vr[i], "valid_theta": valid_theta[i]})
+
+    track_meas["points"] = points
 
     print(Nlen, 'число измерений без отсева')
 
@@ -1325,8 +1357,7 @@ def func_std_error(R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, sko_R_tz
 
     print(len(theta_true), 'число измерений угла после отсева')
 
-    return SKO_R_true, SKO_V_true, SKO_theta_true
-
+    return track_meas, SKO_R_true, SKO_V_true, SKO_theta_true
 
 
 # оценка измерений до точки падения для линейной аппроксимации
@@ -1441,6 +1472,7 @@ def func_trajectory_end_linear(m, g, xhy_0_set, x_est_top, meas_t_ind, window_se
            Vr_true_fin[:last_k], theta_true_fin[:last_k], Vx_true_fin[:last_k], \
            Vh_true_fin[:last_k], V_abs_true_fin[:last_k], alpha_true_fin[:last_k], A_abs_true_fin[:last_k], \
            Ax_true_fin[:last_k], Ah_true_fin[:last_k]
+
 
 # оценка измерений до точки падения для квадратичной аппроксимации
 def func_trajectory_end_quad(m, g, xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, x_L, y_L, h_L):
@@ -1571,6 +1603,7 @@ def func_trajectory_end_quad(m, g, xhy_0_set, x_est_top, meas_t_ind, window_set,
            Vh_true_fin[:last_k], V_abs_true_fin[:last_k], alpha_true_fin[:last_k], A_abs_true_fin[:last_k], \
            Ax_true_fin[:last_k], Ah_true_fin[:last_k]
 
+
 # функция для определения коэффициентов - для промежутка активно-реактивного снаряда
 def func_lsm_linear(X, H):
     N = len(X)
@@ -1594,6 +1627,7 @@ def func_lsm_linear(X, H):
     out = [d1 / d, d2 / d, d3 / d]
 
     return out
+
 
 # заполнение промеждутка для активно-реактивного снаряда оцененными измерениями
 def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, x_tr_er_2, h_tr_er_2, t_meas_2, x_L, y_L, h_L):
@@ -1695,6 +1729,7 @@ def func_derivation(K1, K2, x_fin, v0, alpha):
     z_deriv = (K1 + K2 * x_fin) * v0 ** 2 * np.sin(alpha) ** 2
     return z_deriv
 
+
 # функция деривации для пуль
 def func_derivation_bullet(m, d, l, eta, K_inch, K_gran, K_fut, v0, t_pol):
     eta = eta / d
@@ -1706,6 +1741,7 @@ def func_derivation_bullet(m, d, l, eta, K_inch, K_gran, K_fut, v0, t_pol):
     z_deriv_corr = (1.25 * (Sg_corr + 1.2) * t_pol ** 1.83) / K_inch
     return z_deriv_corr
 
+
 # функция для учета ветра
 def func_wind(t_fin, x_fin, v0, alpha, wind_module, wind_direction, az):
     Aw = np.deg2rad(az) - (np.deg2rad(wind_direction) + np.pi)
@@ -1713,19 +1749,21 @@ def func_wind(t_fin, x_fin, v0, alpha, wind_module, wind_direction, az):
     z_wind = Wz * (t_fin - x_fin / (v0 / np.cos(alpha)))
     return z_wind
 
+
 # функция для перевода точки падения в координаты
 def func_tochka_fall(z, x_fin, can_B, can_L, az):
     x_fall = x_fin
     z_fall = z
     x_sp_gk, y_sp_gk = BLH2XY_GK(can_B, can_L)
     print(x_sp_gk, y_sp_gk, 'зоны падения sp_gk')
-    print(int(x_sp_gk/ 10e5), int(y_sp_gk/ 10e5), 'зоны')
+    print(int(x_sp_gk / 10e5), int(y_sp_gk / 10e5), 'зоны')
     RM = np.array([[np.cos(az), np.sin(az)], [-np.sin(az), np.cos(az)]])
     deltaXY_gk = RM.dot(np.array([[z_fall], [x_fall]]))
-    x_fall_gk = x_sp_gk - 10e5 * int(x_sp_gk/ 10e5) + deltaXY_gk[1]
-    z_fall_gk = y_sp_gk - 10e5 * int(y_sp_gk/ 10e5) + deltaXY_gk[0]
+    x_fall_gk = x_sp_gk - 10e5 * int(x_sp_gk / 10e5) + deltaXY_gk[1]
+    z_fall_gk = y_sp_gk - 10e5 * int(y_sp_gk / 10e5) + deltaXY_gk[0]
 
     return x_fall_gk, z_fall_gk
+
 
 # перевод координат
 def BLH2XY_GK(B, L):

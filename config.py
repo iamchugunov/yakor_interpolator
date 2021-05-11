@@ -105,6 +105,7 @@ class Config():
         self.flag_return = 0
         # ыходная кодограмма
         self.track = []
+        self.track_meas = []
 
 
 
