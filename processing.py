@@ -5,7 +5,7 @@ from function import func_linear_piece_app, func_linear_piece_estimation, \
     func_quad_piece_app, func_quad_piece_estimation, func_derivation, \
     func_trajectory_end_linear, func_trajectory_end_quad, func_filter_data, func_active_reactive, \
     func_active_reactive_trajectory, func_wind, func_tochka_fall, func_derivation_bullet, \
-    func_linear_piece_estimation_error, func_quad_piece_estimation_error, func_std_error, func_std_error_meas
+    func_linear_piece_estimation_error, func_quad_piece_estimation_error, func_std_error_meas
 
 
 def process_initial_data(mes, config):
