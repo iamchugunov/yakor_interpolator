@@ -1297,8 +1297,8 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
         Vr_est_err_plot.append(Vr_est_err)
         theta_est_err_plot.append(theta_est_err)
 
-
     return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
+
 
 def func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err_plot, Vr_est_err_plot, theta_est_err_plot,
                         sko_R_tz, sko_Vr_tz, sko_theta_tz):
@@ -1343,8 +1343,9 @@ def func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err_plot, Vr_
     SKO_V_true = np.std(np.array(Vr_true))
     SKO_theta_true = np.std(np.array(theta_true))
 
-    for i in range(Nlen):
-        points.append({"t": t_meas[i], "R": R_meas[i], "Vr": Vr_meas[i], "theta": theta_meas[i], "valid_R": valid_R[i],
+    for i in range(t_meas):
+        points.append({"t": t_meas[i], "R": R_meas[i], "Vr": Vr_meas[i], "theta": np.rad2deg(theta_meas[i]),
+                       "valid_R": valid_R[i],
                        "valid_Vr": valid_Vr[i], "valid_theta": valid_theta[i]})
 
     track_meas["points"] = points
