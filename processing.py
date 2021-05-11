@@ -140,15 +140,17 @@ def process_measurements(data, config):
                 g, xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, config.loc_X,
                 config.loc_Y, config.loc_Z)
 
-            R_est_err, Vr_est_err, theta_est_err = func_quad_piece_estimation_error(xhy_0_set, x_est_fin,
-                                                                                    meas_t_ind, window_set, t_meas,
-                                                                                    R_meas_filter,
-                                                                                    Vr_meas_filter,
-                                                                                    theta_meas_filter, config.m, g,
-                                                                                    config.loc_X,
-                                                                                    config.loc_Y, config.loc_Z)
+            R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
+                xhy_0_set, x_est_fin,
+                meas_t_ind, window_set, t_meas,
+                R_meas_filter,
+                Vr_meas_filter,
+                theta_meas_filter, config.m, g,
+                config.loc_X,
+                config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
+                                                                      R_est_err,
                                                                       Vr_est_err,
                                                                       theta_est_err, sko_R_tz, sko_Vr_tz,
                                                                       sko_theta_tz)
@@ -248,15 +250,17 @@ def process_measurements(data, config):
                 config.m, g, xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, config.loc_X, config.loc_Y,
                 config.loc_Z)
 
-            R_est_err, Vr_est_err, theta_est_err = func_linear_piece_estimation_error(xhy_0_set, x_est_fin,
-                                                                                      meas_t_ind, window_set, t_meas,
-                                                                                      R_meas_filter,
-                                                                                      Vr_meas_filter,
-                                                                                      theta_meas_filter, config.m, g,
-                                                                                      config.loc_X,
-                                                                                      config.loc_Y, config.loc_Z)
+            R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_linear_piece_estimation_error(
+                xhy_0_set, x_est_fin,
+                meas_t_ind, window_set, t_meas,
+                R_meas_filter,
+                Vr_meas_filter,
+                theta_meas_filter, config.m, g,
+                config.loc_X,
+                config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
+                                                                      R_est_err,
                                                                       Vr_est_err,
                                                                       theta_est_err, sko_R_tz, sko_Vr_tz,
                                                                       sko_theta_tz)
@@ -369,15 +373,17 @@ def process_measurements(data, config):
                                                                                 config.loc_Y,
                                                                                 config.loc_Z)
 
-            R_est_err, Vr_est_err, theta_est_err = func_quad_piece_estimation_error(xhy_0_set, x_est_fin,
-                                                                                    meas_t_ind, window_set, t_meas,
-                                                                                    R_meas_filter,
-                                                                                    Vr_meas_filter,
-                                                                                    theta_meas_filter, config.m, g,
-                                                                                    config.loc_X,
-                                                                                    config.loc_Y, config.loc_Z)
+            R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
+                xhy_0_set, x_est_fin,
+                meas_t_ind, window_set, t_meas,
+                R_meas_filter,
+                Vr_meas_filter,
+                theta_meas_filter, config.m, g,
+                config.loc_X,
+                config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
+                                                                      R_est_err,
                                                                       Vr_est_err,
                                                                       theta_est_err, sko_R_tz, sko_Vr_tz,
                                                                       sko_theta_tz)
@@ -480,15 +486,17 @@ def process_measurements(data, config):
                                                                                 config.loc_Y,
                                                                                 config.loc_Z)
 
-            R_est_err, Vr_est_err, theta_est_err = func_quad_piece_estimation_error(xhy_0_set, x_est_fin,
-                                                                                    meas_t_ind, window_set, t_meas,
-                                                                                    R_meas_filter,
-                                                                                    Vr_meas_filter,
-                                                                                    theta_meas_filter, config.m, g,
-                                                                                    config.loc_X,
-                                                                                    config.loc_Y, config.loc_Z)
+            R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
+                xhy_0_set, x_est_fin,
+                meas_t_ind, window_set, t_meas,
+                R_meas_filter,
+                Vr_meas_filter,
+                theta_meas_filter, config.m, g,
+                config.loc_X,
+                config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
+                                                                      R_est_err,
                                                                       Vr_est_err,
                                                                       theta_est_err, sko_R_tz, sko_Vr_tz,
                                                                       sko_theta_tz)
@@ -530,7 +538,7 @@ def process_measurements(data, config):
                                "DistanceR": R_true_fin[i], "AzR": 0,
                                "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
-            # углы в градусах
+            # углы в градусах - СКО  в градусах
             track_points["points"] = points
             track_points["endpoint_x"] = x_true_fin[-1]
             track_points["endpoint_y"] = h_true_fin[-1]
@@ -641,51 +649,43 @@ def process_measurements(data, config):
                                                   t_meas_plot_2,
                                                   config.loc_X, config.loc_Y, config.loc_Z)
 
-            R_est_err_1, Vr_est_err_1, theta_est_err_1 = func_quad_piece_estimation_error(xhy_0_set_1, x_est_fin_1,
-                                                                                          meas_t_ind_1, window_set_1,
-                                                                                          t_meas,
-                                                                                          R_meas_1_filter,
-                                                                                          Vr_meas_1_filter,
-                                                                                          theta_meas_1_filter, config.m,
-                                                                                          g,
-                                                                                          config.loc_X,
-                                                                                          config.loc_Y, config.loc_Z)
+            R_est_err_1, Vr_est_err_1, theta_est_err_1, t_err_plot_1, R_er_plot_1, Vr_er_plot_1, theta_er_plot_1 = func_quad_piece_estimation_error(
+                xhy_0_set_1, x_est_fin_1,
+                meas_t_ind_1, window_set_1,
+                t_meas_1,
+                R_meas_1_filter,
+                Vr_meas_1_filter,
+                theta_meas_1_filter, config.m,
+                g,
+                config.loc_X,
+                config.loc_Y, config.loc_Z)
 
-            R_est_err_2, Vr_est_err_2, theta_est_err_2 = func_quad_piece_estimation_error(xhy_0_set_2, x_est_fin_2,
-                                                                                          meas_t_ind_2, window_set_2,
-                                                                                          t_meas,
-                                                                                          R_meas_2_filter,
-                                                                                          Vr_meas_2_filter,
-                                                                                          theta_meas_2_filter, config.m,
-                                                                                          g,
-                                                                                          config.loc_X,
-                                                                                          config.loc_Y, config.loc_Z)
+            R_est_err_2, Vr_est_err_2, theta_est_err_2, t_err_plot_2, R_er_plot_2, Vr_er_plot_2, theta_er_plot_2 = func_quad_piece_estimation_error(
+                xhy_0_set_2, x_est_fin_2,
+                meas_t_ind_2, window_set_2,
+                t_meas_2,
+                R_meas_2_filter,
+                Vr_meas_2_filter,
+                theta_meas_2_filter, config.m,
+                g,
+                config.loc_X,
+                config.loc_Y, config.loc_Z)
+
             for i in range(len(R_est_err_2)):
                 R_est_err_1.append(R_est_err_2[i])
                 Vr_est_err_1.append(Vr_est_err_2[i])
                 theta_est_err_1.append(theta_est_err_2[i])
+                t_err_plot_1.append(t_err_plot_2[i])
+                R_er_plot_1.append(R_er_plot_2[i])
+                Vr_er_plot_1.append(Vr_er_plot_2[i])
+                theta_er_plot_1.append(theta_er_plot_2[i])
 
-            t = []
-            R = []
-            Vr = []
-            theta = []
-
-            for i in range(len(t_meas_1)):
-                t.append(t_meas_1[i])
-                R.append(R_meas_1[i])
-                Vr.append(Vr_meas_1[i])
-                theta.append(theta_meas_1[i])
-
-            for i in range(len(t_meas_2)):
-                t.append(t_meas_2[i])
-                R.append(R_meas_2[i])
-                Vr.append(Vr_meas_2[i])
-                theta.append(theta_meas_2[i])
-
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t, R, Vr, theta, R_est_err_1, Vr_est_err_1,
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot_1, R_er_plot_1, Vr_er_plot_1,
+                                                                      theta_er_plot_1, R_est_err_1, Vr_est_err_1,
                                                                       theta_est_err_1,
                                                                       sko_R_tz, sko_Vr_tz,
                                                                       sko_theta_tz)
+            print(track_meas)
 
             # учитывается только ветер
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
@@ -807,15 +807,17 @@ def process_measurements(data, config):
                                                                                 config.loc_Y,
                                                                                 config.loc_Z)
 
-            R_est_err, Vr_est_err, theta_est_err = func_quad_piece_estimation_error(xhy_0_set, x_est_fin,
-                                                                                    meas_t_ind, window_set, t_meas,
-                                                                                    R_meas_filter,
-                                                                                    Vr_meas_filter,
-                                                                                    theta_meas_filter, config.m, g,
-                                                                                    config.loc_X,
-                                                                                    config.loc_Y, config.loc_Z)
+            R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
+                xhy_0_set, x_est_fin,
+                meas_t_ind, window_set, t_meas,
+                R_meas_filter,
+                Vr_meas_filter,
+                theta_meas_filter, config.m, g,
+                config.loc_X,
+                config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err,
+            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
+                                                                      R_est_err,
                                                                       Vr_est_err,
                                                                       theta_est_err, sko_R_tz, sko_Vr_tz,
                                                                       sko_theta_tz)
@@ -883,7 +885,6 @@ def process_measurements(data, config):
             config.flag_return = 1
 
         if config.flag_return == 1:
-
             config.track = track_points
             config.track_meas = track_meas
 

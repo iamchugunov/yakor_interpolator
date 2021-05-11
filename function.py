@@ -1112,6 +1112,9 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
 def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas,
                                        theta_meas, m, g, x_L, y_L, h_L):
     t_err_plot = []
+    R_er_plot = []
+    Vr_er_plot = []
+    theta_er_plot = []
     R_est_full_plot = []
     Vr_est_full_plot = []
     theta_est_full_plot = []
@@ -1138,6 +1141,9 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_
             tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
 
         t_err_plot.append(t)
+        R_er_plot.append(R_er)
+        Vr_er_plot.append(Vr_er)
+        theta_er_plot.append(theta_er)
         t = t - tmin
 
         x_0 = xhy_0_set[s][0].real
@@ -1197,13 +1203,16 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_
         Vr_est_err_plot.append(Vr_est_err)
         theta_est_err_plot.append(theta_est_err)
 
-    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
+    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot
 
 
 # оцененные значения для квадратичной аппроксимации в момент измерений
 def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas, theta_meas,
                                      m, g, x_L, y_L, h_L):
     t_err_plot = []
+    R_er_plot = []
+    Vr_er_plot = []
+    theta_er_plot = []
     R_est_full_plot = []
     Vr_est_full_plot = []
     theta_est_full_plot = []
@@ -1230,6 +1239,9 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
             tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
 
         t_err_plot.append(t)
+        R_er_plot.append(R_er)
+        Vr_er_plot.append(Vr_er)
+        theta_er_plot.append(theta_er)
         t = t - tmin
 
         x_0 = xhy_0_set[s][0].real
@@ -1297,19 +1309,17 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
         Vr_est_err_plot.append(Vr_est_err)
         theta_est_err_plot.append(theta_est_err)
 
-    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
+    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot
 
 
-def func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err_plot, Vr_est_err_plot, theta_est_err_plot,
+def func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot, R_est_err_plot, Vr_est_err_plot,
+                        theta_est_err_plot,
                         sko_R_tz, sko_Vr_tz, sko_theta_tz):
     # выводить std
     track_meas = {}
     meas = []
 
     # валидные точки - 0, если не валидные 1 ( СКО больше ТЗ)
-    valid_R = []
-    valid_Vr = []
-    valid_theta = []
 
     R_true = []
     Vr_true = []
@@ -1321,32 +1331,32 @@ def func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err_plot, Vr_
         for j in range(len(R_est_err_plot[k])):
             if (-3 * sko_R_tz < R_est_err_plot[k][j]) and (R_est_err_plot[k][j] < 3 * sko_R_tz):
                 R_true.append(R_est_err_plot[k][j])
-                valid_R.append(0)
+                valid_R = 0
             else:
-                valid_R.append(1)
+                valid_R = 1
 
             if (-3 * sko_Vr_tz < Vr_est_err_plot[k][j]) and (Vr_est_err_plot[k][j] < 3 * sko_Vr_tz):
                 Vr_true.append(Vr_est_err_plot[k][j])
-                valid_Vr.append(0)
+                valid_Vr = 0
             else:
-                valid_Vr.append(1)
+                valid_Vr = 1
 
             if (-3 * sko_theta_tz < theta_est_err_plot[k][j]) and (theta_est_err_plot[k][j] < 3 * sko_theta_tz):
                 theta_true.append(theta_est_err_plot[k][j])
-                valid_theta.append(0)
+                valid_theta = 0
             else:
-                valid_theta.append(1)
+                valid_theta = 1
+
+            meas.append({"t": t_err_plot[k][j], "R": R_er_plot[k][j], "Vr": Vr_er_plot[k][j],
+                         "theta": np.rad2deg(theta_er_plot[k][j]),
+                         "valid_R": valid_R,
+                         "valid_Vr": valid_Vr, "valid_theta": valid_theta})
 
             Nlen += 1
 
     SKO_R_true = np.std(np.array(R_true))
     SKO_V_true = np.std(np.array(Vr_true))
     SKO_theta_true = np.std(np.array(theta_true))
-
-    for i in range(len(t_meas)):
-        meas.append({"t": t_meas[i], "R": R_meas[i], "Vr": Vr_meas[i], "theta": np.rad2deg(theta_meas[i]),
-                       "valid_R": valid_R[i],
-                       "valid_Vr": valid_Vr[i], "valid_theta": valid_theta[i]})
 
     track_meas["meas"] = meas
 
@@ -1358,7 +1368,7 @@ def func_std_error_meas(t_meas, R_meas, Vr_meas, theta_meas, R_est_err_plot, Vr_
 
     print(len(theta_true), 'число измерений угла после отсева')
 
-    return track_meas, SKO_R_true, SKO_V_true, SKO_theta_true
+    return track_meas, SKO_R_true, SKO_V_true, np.rad2deg(SKO_theta_true)
 
 
 # оценка измерений до точки падения для линейной аппроксимации
