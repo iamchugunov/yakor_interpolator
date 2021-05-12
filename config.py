@@ -98,13 +98,12 @@ class Config():
         with open('bullets.json', 'r') as file:
             for line in file:
                 self.bullets.append(json.loads(line))
-        print(len(self.bullets))
-        print(self.bullets)
 
         # flag_return
         self.flag_return = 0
         # ыходная кодограмма
         self.track = []
+        # помеченные измерения на валидность
         self.track_meas = []
 
 

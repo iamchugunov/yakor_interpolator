@@ -38,7 +38,7 @@ def process_initial_data(mes, config):
     config.wind_direction = mes["wind_direction"]
 
     config.temperature = mes["temperature"]
-    config.pressure = mes["atm_pressure"]
+    config.atm_pressure = mes["atm_pressure"]
 
     config.bullet_type = mes["bullet_type"]
 
@@ -685,7 +685,6 @@ def process_measurements(data, config):
                                                                       theta_est_err_1,
                                                                       sko_R_tz, sko_Vr_tz,
                                                                       sko_theta_tz)
-            print(track_meas)
 
             # учитывается только ветер
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
@@ -712,6 +711,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_est_full_plot_1[i][j], "AzR": 0,
                                    "VrR": Vr_est_full_plot_1[i][j], "EvR": np.rad2deg(theta_est_full_plot_1[i][j])})
 
+
             for i in range(len(t_tr_act_est)):
                 points.append({"t": t_tr_act_est[i], "x": x_tr_act_est[i], "y": h_tr_act_est[i],
                                "z": 0, "V": V_abs_tr_act_est[i], "Vx": Vx_tr_act_est[i],
@@ -721,6 +721,7 @@ def process_measurements(data, config):
                                "alpha": np.rad2deg(alpha_tr_act_est[i]),
                                "DistanceR": R_tr_act_est[i], "AzR": 0,
                                "VrR": Vr_tr_act_est[i], "EvR": np.rad2deg(theta_tr_act_est[i])})
+
 
             for i in range(len(t_meas_plot_2) - 1):
                 for j in range(len(t_meas_plot_2[i])):
@@ -733,6 +734,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_est_full_plot_2[i][j], "AzR": 0,
                                    "VrR": Vr_est_full_plot_2[i][j], "EvR": np.rad2deg(theta_est_full_plot_2[i][j])})
 
+
             for i in range(len(t_fin)):
                 points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
                                "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
@@ -742,6 +744,7 @@ def process_measurements(data, config):
                                "alpha": np.rad2deg(alpha_true_fin[i]),
                                "DistanceR": R_true_fin[i], "AzR": 0,
                                "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
+
 
             track_points["points"] = points
             track_points["endpoint_x"] = x_true_fin[-1]
@@ -885,6 +888,7 @@ def process_measurements(data, config):
             config.flag_return = 1
 
         if config.flag_return == 1:
+
             config.track = track_points
             config.track_meas = track_meas
 
