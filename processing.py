@@ -5,7 +5,8 @@ from function import func_linear_piece_app, func_linear_piece_estimation, \
     func_quad_piece_app, func_quad_piece_estimation, func_derivation, \
     func_trajectory_end_linear, func_trajectory_end_quad, func_filter_data, func_active_reactive, \
     func_active_reactive_trajectory, func_wind, func_tochka_fall, func_derivation_bullet, \
-    func_linear_piece_estimation_error, func_quad_piece_estimation_error, func_std_error_meas
+    func_linear_piece_estimation_error, func_quad_piece_estimation_error, func_std_error_meas, \
+    func_trajectory_end_quad_bullet
 
 
 def process_initial_data(mes, config):
@@ -135,10 +136,10 @@ def process_measurements(data, config):
                                                          config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
             t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, \
-            V_abs_true_fin, alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(
+            V_abs_true_fin, alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad_bullet(
                 config.m,
                 g, xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, config.loc_X,
-                config.loc_Y, config.loc_Z)
+                config.loc_Y, config.loc_Z, config.hei)
 
             R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                 xhy_0_set, x_est_fin,
@@ -149,11 +150,13 @@ def process_measurements(data, config):
                 config.loc_X,
                 config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
-                                                                      R_est_err,
-                                                                      Vr_est_err,
-                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                                      sko_theta_tz)
+            track_meas, sko_R_meas, sko_Vr_meas, sko_theta_meas = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot,
+                                                                                      theta_er_plot,
+                                                                                      R_est_err,
+                                                                                      Vr_est_err,
+                                                                                      theta_est_err, sko_R_tz,
+                                                                                      sko_Vr_tz,
+                                                                                      sko_theta_tz)
 
             # для пуль требуется учитывать и ветер и деривацию
             z_deriv = func_derivation_bullet(config.m, config.d, config.l, config.eta, K_inch, K_gran, K_fut, config.v0,
@@ -173,7 +176,7 @@ def process_measurements(data, config):
             points = []
 
             for i in range(len(t_meas_plot) - 1):
-                for j in range(len(t_meas_plot[i])):
+                for j in range(len(t_meas_plot[i]) - 1):
                     points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                    "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                    "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
@@ -201,9 +204,9 @@ def process_measurements(data, config):
             track_points["endpoint_GK_z"] = z_fall_gk[0]
             track_points["Vb"] = Vb
             track_points["Vd"] = Vd
-            track_points["SKO_R"] = SKO_R
-            track_points["SKO_V"] = SKO_V
-            track_points["SKO_theta"] = SKO_theta
+            track_points["SKO_R"] = sko_R_meas
+            track_points["SKO_V"] = sko_Vr_meas
+            track_points["SKO_theta"] = sko_theta_meas
             track_points["valid"] = True
 
             print(x_true_fin[-1], 'х - точки падения')
@@ -213,8 +216,8 @@ def process_measurements(data, config):
             print(x_fall_gk[0], 'х_fall_gk - точки падения')
             print(z_fall_gk[0], 'z_fall_gk - точки падения')
 
-            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
-            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
+            print(sko_R_meas, sko_Vr_meas, sko_theta_meas, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
             config.flag_return = 1
 
@@ -259,11 +262,13 @@ def process_measurements(data, config):
                 config.loc_X,
                 config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
-                                                                      R_est_err,
-                                                                      Vr_est_err,
-                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                                      sko_theta_tz)
+            track_meas, sko_R_meas, sko_Vr_meas, sko_theta_meas = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot,
+                                                                                      theta_er_plot,
+                                                                                      R_est_err,
+                                                                                      Vr_est_err,
+                                                                                      theta_est_err, sko_R_tz,
+                                                                                      sko_Vr_tz,
+                                                                                      sko_theta_tz)
             # для мин учитывается только ветер
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                config.wind_direction, config.az)
@@ -280,7 +285,7 @@ def process_measurements(data, config):
             points = []
 
             for i in range(len(t_meas_plot) - 1):
-                for j in range(len(t_meas_plot[i])):
+                for j in range(len(t_meas_plot[i]) - 1):
                     points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                    "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                    "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
@@ -308,9 +313,9 @@ def process_measurements(data, config):
             track_points["endpoint_GK_z"] = z_fall_gk[0]
             track_points["Vb"] = Vb
             track_points["Vd"] = Vd
-            track_points["SKO_R"] = SKO_R
-            track_points["SKO_V"] = SKO_V
-            track_points["SKO_theta"] = SKO_theta
+            track_points["SKO_R"] = sko_R_meas
+            track_points["SKO_V"] = sko_Vr_meas
+            track_points["SKO_theta"] = sko_theta_meas
             track_points["valid"] = True
 
             print(x_true_fin[-1], 'х - точки падения')
@@ -320,8 +325,8 @@ def process_measurements(data, config):
             print(x_fall_gk[0], 'х_fall_gk - точки падения')
             print(z_fall_gk[0], 'z_fall_gk - точки падения')
 
-            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
-            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
+            print(sko_R_meas, sko_Vr_meas, sko_theta_meas, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
             config.flag_return = 1
 
@@ -382,11 +387,13 @@ def process_measurements(data, config):
                 config.loc_X,
                 config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
-                                                                      R_est_err,
-                                                                      Vr_est_err,
-                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                                      sko_theta_tz)
+            track_meas, sko_R_meas, sko_Vr_meas, sko_theta_meas = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot,
+                                                                                      theta_er_plot,
+                                                                                      R_est_err,
+                                                                                      Vr_est_err,
+                                                                                      theta_est_err, sko_R_tz,
+                                                                                      sko_Vr_tz,
+                                                                                      sko_theta_tz)
 
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                config.wind_direction, config.az)
@@ -403,7 +410,7 @@ def process_measurements(data, config):
             points = []
 
             for i in range(len(t_meas_plot) - 1):
-                for j in range(len(t_meas_plot[i])):
+                for j in range(len(t_meas_plot[i]) - 1):
                     points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                    "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                    "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
@@ -431,9 +438,9 @@ def process_measurements(data, config):
             track_points["endpoint_GK_z"] = z_fall_gk[0]
             track_points["Vb"] = Vb
             track_points["Vd"] = Vd
-            track_points["SKO_R"] = SKO_R
-            track_points["SKO_V"] = SKO_V
-            track_points["SKO_theta"] = SKO_theta
+            track_points["SKO_R"] = sko_R_meas
+            track_points["SKO_V"] = sko_Vr_meas
+            track_points["SKO_theta"] = sko_theta_meas
             track_points["valid"] = True
 
             print(x_true_fin[-1], 'х - точки падения')
@@ -443,8 +450,8 @@ def process_measurements(data, config):
             print(x_fall_gk[0], 'х_fall_gk - точки падения')
             print(z_fall_gk[0], 'z_fall_gk - точки падения')
 
-            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
-            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
+            print(sko_R_meas, sko_Vr_meas, sko_theta_meas, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
             config.flag_return = 1
 
@@ -495,11 +502,13 @@ def process_measurements(data, config):
                 config.loc_X,
                 config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
-                                                                      R_est_err,
-                                                                      Vr_est_err,
-                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                                      sko_theta_tz)
+            track_meas, sko_R_meas, sko_Vr_meas, sko_theta_meas = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot,
+                                                                                      theta_er_plot,
+                                                                                      R_est_err,
+                                                                                      Vr_est_err,
+                                                                                      theta_est_err, sko_R_tz,
+                                                                                      sko_Vr_tz,
+                                                                                      sko_theta_tz)
 
             z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
 
@@ -518,7 +527,7 @@ def process_measurements(data, config):
             points = []
 
             for i in range(len(t_meas_plot) - 1):
-                for j in range(len(t_meas_plot[i])):
+                for j in range(len(t_meas_plot[i]) - 1):
                     points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                    "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                    "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
@@ -547,9 +556,9 @@ def process_measurements(data, config):
             track_points["endpoint_GK_z"] = z_fall_gk[0]
             track_points["Vb"] = Vb
             track_points["Vd"] = Vd
-            track_points["SKO_R"] = SKO_R
-            track_points["SKO_V"] = SKO_V
-            track_points["SKO_theta"] = SKO_theta
+            track_points["SKO_R"] = sko_R_meas
+            track_points["SKO_V"] = sko_Vr_meas
+            track_points["SKO_theta"] = sko_theta_meas
             track_points["valid"] = True
 
             print(x_true_fin[-1], 'х - точки падения')
@@ -559,8 +568,8 @@ def process_measurements(data, config):
             print(x_fall_gk[0], 'х_fall_gk - точки падения')
             print(z_fall_gk[0], 'z_fall_gk - точки падения')
 
-            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
-            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
+            print(sko_R_meas, sko_Vr_meas, sko_theta_meas, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
             config.flag_return = 1
 
@@ -680,11 +689,14 @@ def process_measurements(data, config):
                 Vr_er_plot_1.append(Vr_er_plot_2[i])
                 theta_er_plot_1.append(theta_er_plot_2[i])
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot_1, R_er_plot_1, Vr_er_plot_1,
-                                                                      theta_er_plot_1, R_est_err_1, Vr_est_err_1,
-                                                                      theta_est_err_1,
-                                                                      sko_R_tz, sko_Vr_tz,
-                                                                      sko_theta_tz)
+            track_meas, sko_R_meas, sko_Vr_meas, sko_theta_meas = func_std_error_meas(t_err_plot_1, R_er_plot_1,
+                                                                                      Vr_er_plot_1,
+                                                                                      theta_er_plot_1,
+                                                                                      R_est_err_1,
+                                                                                      Vr_est_err_1,
+                                                                                      theta_est_err_1, sko_R_tz,
+                                                                                      sko_Vr_tz,
+                                                                                      sko_theta_tz)
 
             # учитывается только ветер
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
@@ -701,7 +713,7 @@ def process_measurements(data, config):
             points = []
 
             for i in range(len(t_meas_plot_1)):
-                for j in range(len(t_meas_plot_1[i])):
+                for j in range(len(t_meas_plot_1[i]) - 1):
                     points.append({"t": t_meas_plot_1[i][j], "x": x_tr_er_plot_1[i][j], "y": h_tr_er_plot_1[i][j],
                                    "z": 0, "V": V_abs_full_plot_1[i][j], "Vx": Vx_true_er_plot_1[i][j],
                                    "Vy": Vh_true_er_plot_1[i][j], "Vz": 0, "A": A_abs_est_plot_1[i][j],
@@ -711,8 +723,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_est_full_plot_1[i][j], "AzR": 0,
                                    "VrR": Vr_est_full_plot_1[i][j], "EvR": np.rad2deg(theta_est_full_plot_1[i][j])})
 
-
-            for i in range(len(t_tr_act_est)):
+            for i in range(len(t_tr_act_est) - 1):
                 points.append({"t": t_tr_act_est[i], "x": x_tr_act_est[i], "y": h_tr_act_est[i],
                                "z": 0, "V": V_abs_tr_act_est[i], "Vx": Vx_tr_act_est[i],
                                "Vy": Vh_tr_act_est[i], "Vz": 0, "A": A_abs_tr_act_est[i],
@@ -722,9 +733,8 @@ def process_measurements(data, config):
                                "DistanceR": R_tr_act_est[i], "AzR": 0,
                                "VrR": Vr_tr_act_est[i], "EvR": np.rad2deg(theta_tr_act_est[i])})
 
-
             for i in range(len(t_meas_plot_2) - 1):
-                for j in range(len(t_meas_plot_2[i])):
+                for j in range(len(t_meas_plot_2[i]) - 1):
                     points.append({"t": t_meas_plot_2[i][j], "x": x_tr_er_plot_2[i][j], "y": h_tr_er_plot_2[i][j],
                                    "z": 0, "V": V_abs_full_plot_2[i][j], "Vx": Vx_true_er_plot_2[i][j],
                                    "Vy": Vh_true_er_plot_2[i][j], "Vz": 0, "A": A_abs_est_plot_2[i][j],
@@ -733,7 +743,6 @@ def process_measurements(data, config):
                                    "alpha": np.rad2deg(alpha_tr_er_plot_2[i][j]),
                                    "DistanceR": R_est_full_plot_2[i][j], "AzR": 0,
                                    "VrR": Vr_est_full_plot_2[i][j], "EvR": np.rad2deg(theta_est_full_plot_2[i][j])})
-
 
             for i in range(len(t_fin)):
                 points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
@@ -745,7 +754,6 @@ def process_measurements(data, config):
                                "DistanceR": R_true_fin[i], "AzR": 0,
                                "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
-
             track_points["points"] = points
             track_points["endpoint_x"] = x_true_fin[-1]
             track_points["endpoint_y"] = h_true_fin[-1]
@@ -754,9 +762,9 @@ def process_measurements(data, config):
             track_points["endpoint_GK_z"] = z_fall_gk[0]
             track_points["Vb"] = Vb
             track_points["Vd"] = Vd
-            track_points["SKO_R"] = SKO_R
-            track_points["SKO_V"] = SKO_V
-            track_points["SKO_theta"] = SKO_theta
+            track_points["SKO_R"] = sko_R_meas
+            track_points["SKO_V"] = sko_Vr_meas
+            track_points["SKO_theta"] = sko_theta_meas
             track_points["valid"] = True
 
             print(x_true_fin[-1], 'х - точки падения')
@@ -766,8 +774,8 @@ def process_measurements(data, config):
             print(x_fall_gk[0], 'х_fall_gk - точки падения')
             print(z_fall_gk[0], 'z_fall_gk - точки падения')
 
-            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
-            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
+            print(sko_R_meas, sko_Vr_meas, sko_theta_meas, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
             config.flag_return = 1
 
@@ -819,11 +827,13 @@ def process_measurements(data, config):
                 config.loc_X,
                 config.loc_Y, config.loc_Z)
 
-            track_meas, SKO_R, SKO_V, SKO_theta = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot,
-                                                                      R_est_err,
-                                                                      Vr_est_err,
-                                                                      theta_est_err, sko_R_tz, sko_Vr_tz,
-                                                                      sko_theta_tz)
+            track_meas, sko_R_meas, sko_Vr_meas, sko_theta_meas = func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot,
+                                                                                      theta_er_plot,
+                                                                                      R_est_err,
+                                                                                      Vr_est_err,
+                                                                                      theta_est_err, sko_R_tz,
+                                                                                      sko_Vr_tz,
+                                                                                      sko_theta_tz)
 
             z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
 
@@ -842,7 +852,7 @@ def process_measurements(data, config):
             points = []
 
             for i in range(len(t_meas_plot) - 1):
-                for j in range(len(t_meas_plot[i])):
+                for j in range(len(t_meas_plot[i]) - 1):
                     points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                    "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                    "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
@@ -870,9 +880,9 @@ def process_measurements(data, config):
             track_points["endpoint_GK_z"] = z_fall_gk[0]
             track_points["Vb"] = Vb
             track_points["Vd"] = Vd
-            track_points["SKO_R"] = SKO_R
-            track_points["SKO_V"] = SKO_V
-            track_points["SKO_theta"] = SKO_theta
+            track_points["SKO_R"] = sko_R_meas
+            track_points["SKO_V"] = sko_Vr_meas
+            track_points["SKO_theta"] = sko_theta_meas
             track_points["valid"] = True
 
             print(x_true_fin[-1], 'х - точки падения')
@@ -882,13 +892,12 @@ def process_measurements(data, config):
             print(x_fall_gk[0], 'х_fall_gk - точки падения')
             print(z_fall_gk[0], 'z_fall_gk - точки падения')
 
-            print(SKO_R, SKO_V, SKO_theta, 'значение СКО после отсева измерений')
-            print(sko_R_tz, sko_Vr_tz, sko_theta_tz, 'СКО по ТЗ')
+            print(sko_R_meas, sko_Vr_meas, sko_theta_meas, 'значение СКО после отсева измерений')
+            print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
             config.flag_return = 1
 
         if config.flag_return == 1:
-
             config.track = track_points
             config.track_meas = track_meas
 
