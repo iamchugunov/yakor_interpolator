@@ -650,12 +650,12 @@ def process_measurements(data, config):
                                                                                                 config.loc_Y,
                                                                                                 config.loc_Z)
 
+
             t_tr_act_est, x_tr_act_est, h_tr_act_est, R_tr_act_est, Vr_tr_act_est, theta_tr_act_est, Vx_tr_act_est, \
             Vh_tr_act_est, V_abs_tr_act_est, alpha_tr_act_est, A_abs_tr_act_est, Ax_tr_act_est, Ah_tr_act_est \
                 = func_active_reactive_trajectory(x_tr_er_plot_1, h_tr_er_plot_1,
-                                                  t_meas_plot_1,
-                                                  x_tr_er_plot_2, h_tr_er_plot_2,
-                                                  t_meas_plot_2,
+                                                  t_meas_plot_1, x_est_fin_1,
+                                                  t_meas_plot_2, config.m, g,
                                                   config.loc_X, config.loc_Y, config.loc_Z)
 
             R_est_err_1, Vr_est_err_1, theta_est_err_1, t_err_plot_1, R_er_plot_1, Vr_er_plot_1, theta_er_plot_1 = func_quad_piece_estimation_error(
@@ -723,7 +723,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_est_full_plot_1[i][j], "AzR": 0,
                                    "VrR": Vr_est_full_plot_1[i][j], "EvR": np.rad2deg(theta_est_full_plot_1[i][j])})
 
-            for i in range(len(t_tr_act_est) - 1):
+            for i in range(len(t_tr_act_est)):
                 points.append({"t": t_tr_act_est[i], "x": x_tr_act_est[i], "y": h_tr_act_est[i],
                                "z": 0, "V": V_abs_tr_act_est[i], "Vx": Vx_tr_act_est[i],
                                "Vy": Vh_tr_act_est[i], "Vz": 0, "A": A_abs_tr_act_est[i],

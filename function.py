@@ -138,7 +138,7 @@ def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_th
 
 # разбиение на участки для активно-реактивного снаряда - type_bullet = 6
 def func_active_reactive(t_meas, R_meas, Vr_meas):
-    Thres_dRdt = 2000
+    Thres_dRdt = 3000
     Thres_dVrdt = 500
 
     dRdt_set = np.diff(R_meas) / np.diff(t_meas)
@@ -1772,51 +1772,28 @@ def func_lsm_linear(X, H):
 
 
 # заполнение промеждутка для активно-реактивного снаряда оцененными измерениями
-def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, x_tr_er_2, h_tr_er_2,
-                                    t_meas_2, x_L, y_L, h_L):
-    N = 300
-    NoW = N / 20
-    NoW = int(NoW)
-    Nkol = 10
+def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, x_est_fin_1,
+                                    t_meas_2, m, g, x_L, y_L, h_L):
+
+    Nlen = len(t_meas_1[-1])
 
     tmin = t_meas_1[-1][-1]
     tmax = t_meas_2[0][0]
 
-    x_tr_act = np.zeros(2 * NoW)
-    h_tr_act = np.zeros(2 * NoW)
+    k0 = x_est_fin_1[-1][0]
+    v0 = x_est_fin_1[-1][1]
+    dR = x_est_fin_1[-1][2]
+    alpha = x_est_fin_1[-1][3]
 
-    for i in range(NoW):
-        x_tr_act[i] = x_tr_er_1[-1][0:len(x_tr_er_1[-1]):20][i]
-        h_tr_act[i] = h_tr_er_1[-1][0:len(h_tr_er_1[-1]):20][i]
+    x_0 = x_tr_er_1[-1][-1]
+    h_0 = h_tr_er_1[-1][-1]
 
-    for i in range(NoW, 2 * NoW):
-        x_tr_act[i] = x_tr_er_2[0][0:len(x_tr_er_2[0]):20][i - NoW]
-        h_tr_act[i] = h_tr_er_2[0][0:len(h_tr_er_2[0]):20][i - NoW]
+    t_tr_act_est = np.linspace(tmin, tmax, num=Nlen)
 
-    kf = func_lsm_linear(x_tr_act, h_tr_act)
+    t = t_tr_act_est - tmin
 
-    x_tr_gap = np.linspace(x_tr_er_1[-1][-1] + 10, x_tr_er_2[0][0] - 10, num=Nkol)
-    t_tr_act_est = np.linspace(tmin, tmax, num=Nkol)
-
-    x_tr_act_est = np.zeros(2 * NoW + Nkol)
-    h_tr_act_est = np.zeros(2 * NoW + Nkol)
-
-    for k in range(NoW):
-        x_tr_act_est[k] = x_tr_er_1[-1][0:len(x_tr_er_1[-1]):20][k]
-
-    for k in range(NoW, NoW + Nkol):
-        x_tr_act_est[k] = x_tr_gap[k - NoW]
-
-    for k in range(NoW + Nkol, 2 * NoW + Nkol):
-        x_tr_act_est[k] = x_tr_er_2[0][0:len(x_tr_er_2[0]):20][k - NoW - Nkol]
-
-    for i in range(len(x_tr_act_est)):
-        h_tr_act_est[i] = kf[2] * x_tr_act_est[i] ** 2 + kf[1] * x_tr_act_est[i] + kf[0]
-
-    x_tr_act_est = x_tr_act_est[NoW:NoW + Nkol]
-    h_tr_act_est = h_tr_act_est[NoW:NoW + Nkol]
-
-    Nlen = len(x_tr_act_est)
+    x_tr_act_est = np.zeros(Nlen)
+    h_tr_act_est = np.zeros(Nlen)
 
     R_tr_act_est = np.zeros(Nlen)
     Vr_tr_act_est = np.zeros(Nlen)
@@ -1832,43 +1809,78 @@ def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, x_tr_er_2, h
     Ah_tr_act_est = np.zeros(Nlen)
     A_abs_tr_act_est = np.zeros(Nlen)
 
-    for k in range(Nlen - 1):
-            Vx_tr_act_est[k] = (x_tr_act_est[k + 1] - x_tr_act_est[k]) / (t_tr_act_est[k + 1] - t_tr_act_est[k])
-            Vh_tr_act_est[k] = (h_tr_act_est[k + 1] - h_tr_act_est[k]) / (t_tr_act_est[k + 1] - t_tr_act_est[k])
-            V_abs_tr_act_est[k] = np.sqrt(Vx_tr_act_est[k] ** 2 + Vh_tr_act_est[k] ** 2)
-
-    Vx_tr_act_est[-1] = Vx_tr_act_est[-2]
-    Vh_tr_act_est[-1] = Vh_tr_act_est[-2]
-    V_abs_tr_act_est[-1] = V_abs_tr_act_est[-2]
-
-    for k in range(Nlen - 2):
-            Ax_tr_act_est[k] = (Vx_tr_act_est[k + 1] - Vx_tr_act_est[k]) / (t_tr_act_est[k + 1] - t_tr_act_est[k])
-            Ah_tr_act_est[k] = (Vh_tr_act_est[k + 1] - Vh_tr_act_est[k]) / (t_tr_act_est[k + 1] - t_tr_act_est[k])
-            A_abs_tr_act_est[k] = abs(V_abs_tr_act_est[k + 1] - V_abs_tr_act_est[k]) / (
-                    t_tr_act_est[k + 1] - t_tr_act_est[k])
-
-    Ax_tr_act_est[-2] = Ax_tr_act_est[-3]
-    Ah_tr_act_est[-2] = Ah_tr_act_est[-3]
-    A_abs_tr_act_est[-2] = A_abs_tr_act_est[-3]
-
-    Ax_tr_act_est[-1] = Ax_tr_act_est[-2]
-    Ah_tr_act_est[-1] = Ah_tr_act_est[-2]
-    A_abs_tr_act_est[-1] = A_abs_tr_act_est[-2]
-
     for k in range(Nlen):
-        R_tr_act_est[k] = np.sqrt((x_L - x_tr_act_est[k]) ** 2 + y_L ** 2 + (h_L - h_tr_act_est[k]) ** 2)
 
-        Vr_tr_act_est[k] = (Vx_tr_act_est[k] * (x_tr_act_est[k] - x_L) + Vh_tr_act_est[k] * (
-                h_tr_act_est[k] - h_L)) / (np.sqrt(
-            (x_L - x_tr_act_est[k]) ** 2 + y_L ** 2 + (h_L - h_tr_act_est[k]) ** 2))
+        x_tr_act_est[k] = (m / k0) * np.log(
+            1 + (k0 / m) * v0 * t[k] * np.cos(alpha)) + x_0
 
-        theta_tr_act_est[k] = np.arctan((h_tr_act_est[k] - h_L) / (np.sqrt((x_tr_act_est[k] - x_L) ** 2 + y_L ** 2)))
+        h_tr_act_est[k] = (m / k0) * np.log(
+            np.cos(np.sqrt((k0 * g) / m) * t[k]) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
+                alpha) * np.sin(np.sqrt((k0 * g) / m) * t[k])) + h_0
+
+        R_tr_act_est[k] = np.sqrt((x_L - (x_0 + (m / k0) * np.log(
+            1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L + (
+                                        h_L - (
+                                        h_0 + (m / k0) * np.log(
+                                    np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(
+                                        k0 / (m * g)) * v0 * np.sin(
+                                        alpha) * np.sin(
+                                        t[k] * np.sqrt(k0 * g / m))))) ** 2) + dR
+
+        theta_tr_act_est[k] = np.arctan(((h_0 + (m / k0) * np.log(
+            np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
+                alpha) * np.sin(t[k] * np.sqrt(k0 * g / m)))) - h_L) / np.sqrt((x_L - (
+                x_0 + (m / k0) * np.log(
+            1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L ** 2))
+
+        Vr_tr_act_est[k] = ((v0 * np.cos(alpha) * ((x_0 + (m / k0) * np.log(
+            1 + (k0 * v0 * t[k] * np.cos(alpha)) / m)) - x_L)) / (1 + (
+                k0 * t[k] * v0 * np.cos(alpha)) / m) + ((np.sqrt(
+            m * g * k0) * v0 * np.sin(alpha) - m * g * np.tan(
+            np.sqrt(k0 * g / m) * t[k])) / (np.sqrt(m * g * k0) + k0 *
+                                            v0 * np.sin(
+                    alpha) * np.tan(np.sqrt(k0 * g / m) * t[k]))) * (
+                                  (h_0 + (m / k0) * np.log(
+                                      np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
+                                          k0 / (m * g)) * v0 * np.sin(
+                                          alpha) * np.sin(
+                                          np.sqrt(k0 * g / m) * t[k]))) - h_L)) / (
+                             np.sqrt((x_L - (
+                                     x_0 + (m / k0) * np.log(
+                                 1 + (k0 * v0 * t[k] * np.cos(
+                                     alpha)) / m))) ** 2 + y_L ** 2 + (h_L - (
+                                     h_0 + (m / k0) * np.log(
+                                 np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
+                                     k0 / (m * g)) * v0 * np.sin(
+                                     alpha) * np.sin(
+                                     np.sqrt(k0 * g / m) * t[k])))) ** 2))
+
+        Vx_tr_act_est[k] = (v0 * np.cos(alpha)) / (
+                1 + k0 * v0 * t[k] * np.cos(alpha) / m)
+
+        Vh_tr_act_est[k] = (np.sqrt(m * g * k0) * v0 * np.sin(
+            alpha) - m * g * np.tan(
+            np.sqrt((k0 * g) / m) * t[k])) / (
+                                 np.sqrt(m * g * k0) + k0 * v0 * np.sin(
+                             alpha) * np.tan(np.sqrt((k0 * g) / m) * t[k]))
+
+        V_abs_tr_act_est[k] = np.sqrt(Vx_tr_act_est[k] ** 2 + Vh_tr_act_est[k] ** 2)
+
         alpha_tr_act_est[k] = np.arctan(Vh_tr_act_est[k] / Vx_tr_act_est[k])
+
+        if k > 0:
+            A_abs_tr_act_est[k] = abs((V_abs_tr_act_est[k] - V_abs_tr_act_est[k - 1]) / (t[k] - t[k - 1]))
+            Ax_tr_act_est[k] = (Vx_tr_act_est[k] - Vx_tr_act_est[k - 1]) / (t[k] - t[k - 1])
+            Ah_tr_act_est[k] = (Vh_tr_act_est[k] - Vh_tr_act_est[k - 1]) / (t[k] - t[k - 1])
+
+
+    A_abs_tr_act_est[0] = A_abs_tr_act_est[1]
+    Ax_tr_act_est[0] = Ax_tr_act_est[1]
+    Ah_tr_act_est[0] = Ah_tr_act_est[1]
 
 
     return t_tr_act_est, x_tr_act_est, h_tr_act_est, R_tr_act_est, Vr_tr_act_est, theta_tr_act_est, Vx_tr_act_est, \
            Vh_tr_act_est, V_abs_tr_act_est, alpha_tr_act_est, A_abs_tr_act_est, Ax_tr_act_est, Ah_tr_act_est
-
 
 # деривация для снарядов
 def func_derivation(K1, K2, x_fin, v0, alpha):
