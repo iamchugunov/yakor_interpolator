@@ -8,6 +8,7 @@ from function import func_linear_piece_app, func_linear_piece_estimation, \
     func_linear_piece_estimation_error, func_quad_piece_estimation_error, func_std_error_meas, \
     func_trajectory_end_quad_bullet
 
+import plotly.graph_objs as go
 
 def process_initial_data(mes, config):
     # blh2ENU для локатора
@@ -575,6 +576,9 @@ def process_measurements(data, config):
 
         if config.bullet_type == 6:  # 152 - act-react
 
+            K1 = 0.00324881940048771
+            K2 = -2.37948707596265e-08
+
             winlen = 30
             step_sld = 10
 
@@ -658,6 +662,23 @@ def process_measurements(data, config):
                                                   t_meas_plot_2, config.m, g,
                                                   config.loc_X, config.loc_Y, config.loc_Z)
 
+            # fig = go.Figure()
+            #
+            # for i in range(len(x_tr_er_plot_1)):
+            #     fig.add_trace(go.Scatter(x=x_tr_er_plot_1[i], y=h_tr_er_plot_1[i], mode='lines+markers', name=('1'+str(i))))
+            #
+            # fig.add_trace(go.Scatter(x=x_tr_act_est, y=h_tr_act_est, name='промежуток'))
+            #
+            # for i in range(len(x_tr_er_plot_2)):
+            #     fig.add_trace(go.Scatter(x=x_tr_er_plot_2[i], y=h_tr_er_plot_2[i], mode='lines+markers', name=('2'+str(i))))
+            #
+            # fig.update_layout(legend_orientation="h",
+            #                   legend=dict(x=.5, xanchor="center"),
+            #                   hovermode='x')
+            #
+            # fig.update_traces(hoverinfo="all", hovertemplate="t: %{x}<br>theta: %{y}")
+            # fig.show(renderer="browser")
+
             R_est_err_1, Vr_est_err_1, theta_est_err_1, t_err_plot_1, R_er_plot_1, Vr_er_plot_1, theta_er_plot_1 = func_quad_piece_estimation_error(
                 xhy_0_set_1, x_est_fin_1,
                 meas_t_ind_1, window_set_1,
@@ -698,11 +719,14 @@ def process_measurements(data, config):
                                                                                       sko_Vr_tz,
                                                                                       sko_theta_tz)
 
+            z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
+
             # учитывается только ветер
             z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                config.wind_direction, config.az)
 
-            z = z_wind
+            z = z_wind + z_deriv
+
             x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], config.can_B, config.can_L,
                                                     config.az)
 
@@ -782,8 +806,8 @@ def process_measurements(data, config):
         if config.bullet_type == 7:  # 152 art
 
             # параметры для деривации артиллерийского снаряда
-            K1 = 0.00484165821041086
-            K2 = -1.26463194945151e-07
+            K1 = 0.00469403894621853
+            K2 = -1.48037192545477e-07
 
             winlen = 40  # 30 - 40 152-12-50
             step_sld = 10
@@ -871,6 +895,7 @@ def process_measurements(data, config):
                                "alpha": np.rad2deg(alpha_true_fin[i]),
                                "DistanceR": R_true_fin[i], "AzR": 0,
                                "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
+                
             # углы в градусах
             track_points["points"] = points
             track_points["endpoint_x"] = x_true_fin[-1]

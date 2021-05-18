@@ -1882,6 +1882,7 @@ def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, x_est_fin_1,
     return t_tr_act_est, x_tr_act_est, h_tr_act_est, R_tr_act_est, Vr_tr_act_est, theta_tr_act_est, Vx_tr_act_est, \
            Vh_tr_act_est, V_abs_tr_act_est, alpha_tr_act_est, A_abs_tr_act_est, Ax_tr_act_est, Ah_tr_act_est
 
+
 # деривация для снарядов
 def func_derivation(K1, K2, x_fin, v0, alpha):
     z_deriv = (K1 + K2 * x_fin) * v0 ** 2 * np.sin(alpha) ** 2

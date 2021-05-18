@@ -12,34 +12,12 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="DockManager">
-    <window id="2">
-      <content type="file-editors">
-        <state>
-          <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-            <file pinned="false" current-in-tab="true">
-              <entry file="file://$PROJECT_DIR$/processing.py">
-                <provider selected="true" editor-type-id="text-editor">
-                  <state relative-caret-position="-1989">
-                    <caret line="9" lean-forward="true" selection-start-line="9" selection-end-line="9" />
-                    <folding>
-                      <element signature="e#0#18#0" expanded="true" />
-                    </folding>
-                  </state>
-                </provider>
-              </entry>
-            </file>
-          </leaf>
-        </state>
-      </content>
-    </window>
-  </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="102">
+            <state relative-caret-position="258">
               <caret line="46" column="49" selection-start-line="46" selection-start-column="49" selection-end-line="46" selection-end-column="49" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
@@ -48,11 +26,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/function.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="221">
-              <caret line="1777" column="28" lean-forward="true" selection-start-line="1777" selection-start-column="28" selection-end-line="1777" selection-end-column="28" />
+            <state relative-caret-position="156">
+              <caret line="1865" lean-forward="true" selection-start-line="1865" selection-end-line="1865" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -61,37 +39,23 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python38/Lib/site-packages/numpy/core/function_base.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="187">
-              <caret line="22" selection-start-line="22" selection-end-line="22" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bullets.json">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="119">
-              <caret line="7" selection-start-line="7" selection-end-line="7" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/config.json">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="51">
-              <caret line="3" column="1" selection-start-line="3" selection-start-column="1" selection-end-line="3" selection-end-column="1" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/config.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1785">
+            <state relative-caret-position="598">
               <caret line="105" column="44" selection-start-line="105" selection-start-column="44" selection-end-line="105" selection-end-column="44" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/processing.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-3564">
+              <caret line="584" column="51" selection-start-line="584" selection-start-column="51" selection-end-line="584" selection-end-column="51" />
+              <folding>
+                <element signature="e#0#18#0" expanded="true" />
+                <marker date="1621325871870" expanded="true" signature="37823:38675" ph="..." />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -159,7 +123,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -171,6 +134,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -300,13 +264,13 @@
     <frame x="2509" y="0" width="1348" height="816" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.14198473" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.14198473" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.25475842" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.47076023" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.25475842" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.25768667" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -390,10 +354,13 @@
     <entry file="file://$USER_HOME$/AppData/Local/Temp/Rar$DIa18136.4358/Main.py" />
     <entry file="file://$USER_HOME$/AppData/Local/Temp/Rar$DIa7156.28060/Main.py" />
     <entry file="file://$USER_HOME$/AppData/Local/Temp/Rar$DIa16200.6128/gomain.py" />
-    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python38/Lib/site-packages/numpy/core/function_base.py">
+    <entry file="file://$USER_HOME$/AppData/Local/Temp/Rar$DIa12648.48451/Main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="187">
-          <caret line="22" selection-start-line="22" selection-end-line="22" />
+        <state relative-caret-position="163">
+          <caret line="1838" selection-start-line="1838" selection-end-line="1851" selection-end-column="89" />
+          <folding>
+            <element signature="e#0#10#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -411,16 +378,26 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/config.py">
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python38/Lib/site-packages/numpy/core/function_base.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1785">
-          <caret line="105" column="44" selection-start-line="105" selection-start-column="44" selection-end-line="105" selection-end-column="44" />
+        <state relative-caret-position="187">
+          <caret line="22" selection-start-line="22" selection-end-line="22" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/function.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="156">
+          <caret line="1865" lean-forward="true" selection-start-line="1865" selection-end-line="1865" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="102">
+        <state relative-caret-position="258">
           <caret line="46" column="49" selection-start-line="46" selection-start-column="49" selection-end-line="46" selection-end-column="49" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
@@ -428,22 +405,20 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/processing.py">
+    <entry file="file://$PROJECT_DIR$/config.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1989">
-          <caret line="9" lean-forward="true" selection-start-line="9" selection-end-line="9" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="598">
+          <caret line="105" column="44" selection-start-line="105" selection-start-column="44" selection-end-line="105" selection-end-column="44" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/function.py">
+    <entry file="file://$PROJECT_DIR$/processing.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="221">
-          <caret line="1777" column="28" lean-forward="true" selection-start-line="1777" selection-start-column="28" selection-end-line="1777" selection-end-column="28" />
+        <state relative-caret-position="-3564">
+          <caret line="584" column="51" selection-start-line="584" selection-start-column="51" selection-end-line="584" selection-end-column="51" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
+            <marker date="1621325871870" expanded="true" signature="37823:38675" ph="..." />
           </folding>
         </state>
       </provider>
