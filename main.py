@@ -1,7 +1,9 @@
-import socket
-from config import Config
 import json
+import ctypes
+import socket
 import processing as pr
+
+from config import Config
 
 config = Config()
 
@@ -59,4 +61,5 @@ while True:
                 client.sendall(data2send)
 
             else:
+
                 print("nan")
