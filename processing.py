@@ -2,13 +2,15 @@ import numpy as np
 import pymap3d as pm
 import ctypes
 import traceback
+import plotly.graph_objs as go
 
 from function import length_winlen, func_linear_piece_app, func_linear_piece_estimation, \
-    func_quad_piece_app, func_quad_piece_estimation, func_derivation, \
-    func_trajectory_end_linear, func_trajectory_end_quad, func_filter_data, func_active_reactive, \
-    func_wind, func_tochka_fall, func_derivation_bullet, func_trajectory_end_quad_act_react, \
-    func_linear_piece_estimation_error, func_quad_piece_estimation_error, func_std_error_meas, \
-    func_trajectory_end_quad_bullet, func_active_reactive_trajectory, sampling_points
+    func_quad_piece_app, func_quad_piece_estimation, func_derivation, func_filter_data, func_active_reactive, \
+    func_wind, func_tochka_fall, func_derivation_bullet, func_linear_piece_estimation_error, \
+    func_quad_piece_estimation_error, func_std_error_meas,  sampling_points, \
+    func_trajectory_start, func_quad_piece_estimation_start, func_trajectory_end, \
+    func_linear_piece_estimation_start, func_linear_piece_app_start, func_quad_piece_app_start, \
+    func_active_reactive_trajectory
 
 
 def process_initial_data(mes, config):
@@ -95,6 +97,7 @@ def process_measurements(data, config):
         # число точек для отрешивания траектории
         N = 300
         g = 9.8155
+        config.m = 43.56
 
         # данные ТЗ
         sko_R_tz = 5
@@ -106,6 +109,17 @@ def process_measurements(data, config):
         K_gran = 15432.4
         K_fut = 3.28084
 
+        rho_0 = 1.225
+        T = 288
+        M = 0.0289644
+        R = 8.31447
+
+
+        Cx = 0.26
+        r = 0.152 / 2
+
+
+        # считываем пришедшие данные
         Ndlen = len(data["points"])
         winlen, step_sld = length_winlen(Ndlen)
 
@@ -165,18 +179,37 @@ def process_measurements(data, config):
                                                                 winlen,
                                                                 step_sld, parameters_bounds)
 
-                # x_est_fin = [k0, v0, dR, alpha] - где угол в радинах
+                x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set, x_est_fin, t_meas)
+
+                print(x_est_start)
+
+                x_est_app_start = func_quad_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, x_est_start, t_meas,
+                                                            R_meas_filter, Vr_meas_filter,
+                                                            theta_meas_filter,
+                                                            window_set, parameters_bounds)
+                print(x_est_app_start)
+
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
-                Ah_true_er_plot = func_quad_piece_estimation(xhy_0_set, x_est_fin, meas_t_ind, window_set,
-                                                             t_meas_tr, N,
-                                                             config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+                Ah_true_er_plot = func_quad_piece_estimation(
+                    xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
+                    config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
-                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, \
-                V_abs_true_fin, alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad_bullet(
-                    config.m,
-                    g, xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, config.loc_X,
-                    config.loc_Y, config.loc_Z, config.hei)
+                t_start, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
+                V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start = func_quad_piece_estimation_start(
+                    x_est_app_start, t_meas_plot, config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+
+                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
+                alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
+                                                                                               config.m, g, xhy_0_set,
+                                                                                               meas_t_ind, window_set,
+                                                                                               x_est_fin, t_meas,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -213,6 +246,16 @@ def process_measurements(data, config):
                 # создание выходного трэка
                 track_points = {}
                 points = []
+
+                for i in range(len(t_start)):
+                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                                   "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
+                                   "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
+                                   "Ax": Ax_true_start[i],
+                                   "Ay": Ah_true_start[i], "Az": 0, "C": x_est_start[0],
+                                   "alpha": np.rad2deg(alpha_true_start[i]),
+                                   "DistanceR": R_true_start[i], "AzR": 0,
+                                   "VrR": Vr_true_start[i], "EvR": np.rad2deg(theta_true_start[i])})
 
                 for i in range(len(t_meas_plot) - 1):
                     for j in range(len(t_meas_plot[i]) - 1):
@@ -297,16 +340,38 @@ def process_measurements(data, config):
                                                                   winlen,
                                                                   step_sld, parameters_bounds)
 
+                x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set,
+                                                    x_est_fin, t_meas)
+
+                print(x_est_start)
+
+                x_est_app_start = func_linear_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, x_est_start, t_meas,
+                                                            R_meas_filter, Vr_meas_filter,
+                                                            theta_meas_filter,
+                                                            window_set, parameters_bounds)
+                print(x_est_app_start)
+
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_linear_piece_estimation(
                     xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
-                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, \
-                V_abs_true_fin, alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_linear(
-                    config.m, g, xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, config.loc_X, config.loc_Y,
-                    config.loc_Z)
+                t_start, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
+                V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start = func_linear_piece_estimation_start(
+                    x_est_app_start, t_meas_plot, config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+
+                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
+                alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
+                                                                                               config.m, g, xhy_0_set,
+                                                                                               meas_t_ind, window_set,
+                                                                                               x_est_fin, t_meas,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_linear_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -339,6 +404,16 @@ def process_measurements(data, config):
 
                 track_points = {}
                 points = []
+
+                for i in range(len(t_start)):
+                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                                   "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
+                                   "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
+                                   "Ax": Ax_true_start[i],
+                                   "Ay": Ah_true_start[i], "Az": 0, "C": x_est_start[0],
+                                   "alpha": np.rad2deg(alpha_true_start[i]),
+                                   "DistanceR": R_true_start[i], "AzR": 0,
+                                   "VrR": Vr_true_start[i], "EvR": np.rad2deg(theta_true_start[i])})
 
                 for i in range(len(t_meas_plot) - 1):
                     for j in range(len(t_meas_plot[i]) - 1):
@@ -376,6 +451,7 @@ def process_measurements(data, config):
                 track_points["SKO_theta"] = sko_theta_meas
                 track_points["valid"] = True
 
+                # заполнения азимута
                 for i in range(len(az_meas) - 1):
                     for j in range(len(track_points["points"])):
                         if t_meas[i] <= track_points["points"][j]["t"] < t_meas[i + 1]:
@@ -435,18 +511,38 @@ def process_measurements(data, config):
                                                                 winlen,
                                                                 step_sld, parameters_bounds)
 
+                x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set,
+                                                    x_est_fin, t_meas)
+
+                print(x_est_start)
+
+                x_est_app_start = func_quad_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, x_est_start, t_meas,
+                                                            R_meas_filter, Vr_meas_filter,
+                                                            theta_meas_filter,
+                                                            window_set, parameters_bounds)
+                print(x_est_app_start)
+
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
                     xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
-                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, alpha_true_fin, \
-                A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(config.m, g, xhy_0_set, x_est_fin,
-                                                                                    meas_t_ind,
-                                                                                    window_set, t_meas_tr, config.loc_X,
-                                                                                    config.loc_Y,
-                                                                                    config.loc_Z)
+                t_start, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
+                V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start = func_quad_piece_estimation_start(
+                    x_est_app_start, t_meas_plot, config.m, g, config.loc_X, config.loc_Y, config.Z)
+
+                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
+                alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
+                                                                                               config.m, g, xhy_0_set,
+                                                                                               meas_t_ind, window_set,
+                                                                                               x_est_fin, t_meas,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -479,6 +575,16 @@ def process_measurements(data, config):
 
                 track_points = {}
                 points = []
+
+                for i in range(len(t_start)):
+                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                                   "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
+                                   "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
+                                   "Ax": Ax_true_start[i],
+                                   "Ay": Ah_true_start[i], "Az": 0, "C": x_est_start[0],
+                                   "alpha": np.rad2deg(alpha_true_start[i]),
+                                   "DistanceR": R_true_start[i], "AzR": 0,
+                                   "VrR": Vr_true_start[i], "EvR": np.rad2deg(theta_true_start[i])})
 
                 for i in range(len(t_meas_plot) - 1):
                     for j in range(len(t_meas_plot[i]) - 1):
@@ -565,18 +671,37 @@ def process_measurements(data, config):
                                                                 winlen,
                                                                 step_sld, parameters_bounds)
 
+                x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set, x_est_fin, t_meas)
+
+                print(x_est_start)
+
+                x_est_app_start = func_quad_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, x_est_start, t_meas,
+                                                            R_meas_filter, Vr_meas_filter,
+                                                            theta_meas_filter,
+                                                            window_set, parameters_bounds)
+                print(x_est_app_start)
+
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
                     xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
-                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, alpha_true_fin, \
-                A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(config.m, g, xhy_0_set, x_est_fin,
-                                                                                    meas_t_ind,
-                                                                                    window_set, t_meas_tr, config.loc_X,
-                                                                                    config.loc_Y,
-                                                                                    config.loc_Z)
+                t_start, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
+                V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start = func_quad_piece_estimation_start(
+                    x_est_app_start, t_meas_plot, config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+
+                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
+                alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
+                                                                                               config.m, g, xhy_0_set,
+                                                                                               meas_t_ind, window_set,
+                                                                                               x_est_fin, t_meas,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -611,6 +736,16 @@ def process_measurements(data, config):
 
                 track_points = {}
                 points = []
+
+                for i in range(len(t_start)):
+                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                                   "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
+                                   "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
+                                   "Ax": Ax_true_start[i],
+                                   "Ay": Ah_true_start[i], "Az": 0, "C": x_est_start[0],
+                                   "alpha": np.rad2deg(alpha_true_start[i]),
+                                   "DistanceR": R_true_start[i], "AzR": 0,
+                                   "VrR": Vr_true_start[i], "EvR": np.rad2deg(theta_true_start[i])})
 
                 for i in range(len(t_meas_plot) - 1):
                     for j in range(len(t_meas_plot[i]) - 1):
@@ -732,6 +867,28 @@ def process_measurements(data, config):
                                                                     winlen1,
                                                                     step_sld1, parameters_bounds_1)
 
+                x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set_1,
+                                                    x_est_fin_1, t_meas_1)
+                print(x_est_start)
+                x_est_app_start = func_quad_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
+                                                                    config.can_Y,
+                                                                    config.m, g, config.SKO_R,
+                                                                    config.SKO_Vr, config.SKO_theta, x_est_start, t_meas_1,
+                                                                    R_meas_1_filter, Vr_meas_1_filter,
+                                                                    theta_meas_1_filter,
+                                                                    window_set_1,parameters_bounds_1)
+                print(x_est_app_start)
+
+                t_meas_plot_1, x_tr_er_plot_1, h_tr_er_plot_1, R_est_full_plot_1, Vr_est_full_plot_1, \
+                theta_est_full_plot_1, Vx_true_er_plot_1, Vh_true_er_plot_1, V_abs_full_plot_1, alpha_tr_er_plot_1, \
+                A_abs_est_plot_1, Ax_true_er_plot_1, Ah_true_er_plot_1 = func_quad_piece_estimation(
+                    xhy_0_set_1, x_est_fin_1, meas_t_ind_1, window_set_1, t_meas_tr_1, N,
+                    config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+
+                t_start, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
+                V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start = func_quad_piece_estimation_start(
+                    x_est_app_start, t_meas_plot_1, config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+
                 xhy_0_set_2, x_est_fin_2, meas_t_ind_2, window_set_2, t_meas_tr_2, R_meas_tr_2, \
                 Vr_meas_tr_2, theta_meas_tr_2 = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
                                                                     config.can_Y,
@@ -743,41 +900,29 @@ def process_measurements(data, config):
                                                                     winlen2,
                                                                     step_sld2, parameters_bounds_2)
 
-                t_meas_plot_1, x_tr_er_plot_1, h_tr_er_plot_1, R_est_full_plot_1, Vr_est_full_plot_1, \
-                theta_est_full_plot_1, Vx_true_er_plot_1, Vh_true_er_plot_1, V_abs_full_plot_1, alpha_tr_er_plot_1, \
-                A_abs_est_plot_1, Ax_true_er_plot_1, Ah_true_er_plot_1 = func_quad_piece_estimation(
-                    xhy_0_set_1, x_est_fin_1, meas_t_ind_1, window_set_1, t_meas_tr_1, N,
-                    config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
-
                 t_meas_plot_2, x_tr_er_plot_2, h_tr_er_plot_2, R_est_full_plot_2, Vr_est_full_plot_2, \
                 theta_est_full_plot_2, Vx_true_er_plot_2, Vh_true_er_plot_2, V_abs_full_plot_2, alpha_tr_er_plot_2, \
                 A_abs_est_plot_2, Ax_true_er_plot_2, Ah_true_er_plot_2 = func_quad_piece_estimation(
                     xhy_0_set_2, x_est_fin_2, meas_t_ind_2, window_set_2, t_meas_tr_2, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
-                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
-                alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad_act_react(config.m,
-                                                                                                              g,
-                                                                                                              [
-                                                                                                                  xhy_0_set_1,
-                                                                                                                  xhy_0_set_2],
-                                                                                                              [
-                                                                                                                  x_est_fin_1,
-                                                                                                                  x_est_fin_2],
-                                                                                                              meas_t_ind_2,
-                                                                                                              window_set_2,
-                                                                                                              t_meas_tr_2,
-                                                                                                              config.loc_X,
-                                                                                                              config.loc_Y,
-                                                                                                              config.loc_Z)
-
                 t_tr_act_est, x_tr_act_est, h_tr_act_est, R_tr_act_est, Vr_tr_act_est, theta_tr_act_est, Vx_tr_act_est, \
                 Vh_tr_act_est, V_abs_tr_act_est, alpha_tr_act_est, A_abs_tr_act_est, Ax_tr_act_est, Ah_tr_act_est \
                     = func_active_reactive_trajectory(x_tr_er_plot_1, h_tr_er_plot_1,
-                                                      t_meas_plot_1, Vx_true_er_plot_1, Vh_true_er_plot_1,
+                                                      t_meas_plot_1, Vx_true_er_plot_1, Vh_true_er_plot_1, Ax_true_er_plot_1, Ah_true_er_plot_1,
                                                       x_tr_er_plot_2, h_tr_er_plot_2,
-                                                      t_meas_plot_2, Vx_true_er_plot_2, Vh_true_er_plot_2, N,
-                                                      config.loc_H, config.loc_Y, config.loc_H)
+                                                      t_meas_plot_2, Vx_true_er_plot_2, Vh_true_er_plot_2, Ax_true_er_plot_2, Ah_true_er_plot_2, N,
+                                                      config.loc_X, config.loc_Y, config.loc_Z)
+
+                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
+                alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
+                                                                                               config.m, g, xhy_0_set_2,
+                                                                                               meas_t_ind_2,
+                                                                                               window_set_2,
+                                                                                               x_est_fin_2, t_meas_2,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err_1, Vr_est_err_1, theta_est_err_1, t_err_plot_1, R_er_plot_1, Vr_er_plot_1, theta_er_plot_1 = func_quad_piece_estimation_error(
                     xhy_0_set_1, x_est_fin_1,
@@ -837,6 +982,16 @@ def process_measurements(data, config):
                 track_points = {}
                 points = []
 
+                for i in range(len(t_start)):
+                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                                   "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
+                                   "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
+                                   "Ax": Ax_true_start[i],
+                                   "Ay": Ah_true_start[i], "Az": 0, "C": x_est_start[0],
+                                   "alpha": np.rad2deg(alpha_true_start[i]),
+                                   "DistanceR": R_true_start[i], "AzR": 0,
+                                   "VrR": Vr_true_start[i], "EvR": np.rad2deg(theta_true_start[i])})
+
                 for i in range(len(t_meas_plot_1)):
                     for j in range(len(t_meas_plot_1[i]) - 1):
                         points.append({"t": t_meas_plot_1[i][j], "x": x_tr_er_plot_1[i][j], "y": h_tr_er_plot_1[i][j],
@@ -880,6 +1035,7 @@ def process_measurements(data, config):
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
                 points_sampling = sampling_points(points, TD)
+
                 track_points["points"] = points_sampling
                 track_points["endpoint_x"] = x_true_fin[-1]
                 track_points["endpoint_y"] = h_true_fin[-1]
@@ -952,18 +1108,39 @@ def process_measurements(data, config):
                                                                 winlen,
                                                                 step_sld, parameters_bounds)
 
+                x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set,
+                                                    x_est_fin, t_meas)
+
+                print(x_est_start)
+
+                x_est_app_start = func_quad_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
+                                                                    config.can_Y,
+                                                                    config.m, g, config.SKO_R,
+                                                                    config.SKO_Vr, config.SKO_theta, x_est_start, t_meas,
+                                                                    R_meas_filter, Vr_meas_filter,
+                                                                    theta_meas_filter,
+                                                                    window_set,parameters_bounds)
+                print(x_est_app_start)
+
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
                     xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
-                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, alpha_true_fin, \
-                A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end_quad(config.m, g, xhy_0_set, x_est_fin,
-                                                                                    meas_t_ind,
-                                                                                    window_set, t_meas_tr, config.loc_X,
-                                                                                    config.loc_Y,
-                                                                                    config.loc_Z)
+                t_start, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
+                V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start = func_quad_piece_estimation_start(
+                    x_est_app_start, t_meas_plot, config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+
+
+                t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
+                alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
+                                                                                               config.m, g, xhy_0_set,
+                                                                                               meas_t_ind, window_set,
+                                                                                               x_est_fin, t_meas,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -998,6 +1175,16 @@ def process_measurements(data, config):
 
                 track_points = {}
                 points = []
+
+                for i in range(len(t_start)):
+                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                                   "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
+                                   "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
+                                   "Ax": Ax_true_start[i],
+                                   "Ay": Ah_true_start[i], "Az": 0, "C": x_est_start[0],
+                                   "alpha": np.rad2deg(alpha_true_start[i]),
+                                   "DistanceR": R_true_start[i], "AzR": 0,
+                                   "VrR": Vr_true_start[i], "EvR": np.rad2deg(theta_true_start[i])})
 
                 for i in range(len(t_meas_plot) - 1):
                     for j in range(len(t_meas_plot[i]) - 1):
