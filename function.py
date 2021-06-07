@@ -552,17 +552,10 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
         x_0 = 0
         h_0 = 0
 
-        w = 7
-
-        # t_meas = t_meas_full[0:window_set[0][1]]
-        # R_meas = R_meas_full[0:window_set[0][1]]
-        # Vr_meas = Vr_meas_full[0:window_set[0][1]]
-        # theta_meas = theta_meas_full[0:window_set[0][1]]
-
-        t_meas = t_meas_full[0:w]
-        R_meas = R_meas_full[0:w]
-        Vr_meas = Vr_meas_full[0:w]
-        theta_meas = theta_meas_full[0:w]
+        t_meas = t_meas_full[0:window_set[0][1] + window_set[1][1]]
+        R_meas = R_meas_full[0:window_set[0][1] + window_set[1][1]]
+        Vr_meas = Vr_meas_full[0:window_set[0][1] + window_set[1][1]]
+        theta_meas = theta_meas_full[0:window_set[0][1] + window_set[1][1]]
 
         for p in range(30):
 
@@ -1151,17 +1144,11 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
         h_0 = 0
 
 
-        # t_meas = t_meas_full[0:window_set[0][1]]
-        # R_meas = R_meas_full[0:window_set[0][1]]
-        # Vr_meas = Vr_meas_full[0:window_set[0][1]]
-        # theta_meas = theta_meas_full[0:window_set[0][1]]
+        t_meas = t_meas_full[0:window_set[0][1] + window_set[1][1]]
+        R_meas = R_meas_full[0:window_set[0][1] + window_set[1][1]]
+        Vr_meas = Vr_meas_full[0:window_set[0][1] + window_set[1][1]]
+        theta_meas = theta_meas_full[0:window_set[0][1] + window_set[1][1]]
 
-        w = 8
-
-        t_meas = t_meas_full[0:w]
-        R_meas = R_meas_full[0:w]
-        Vr_meas = Vr_meas_full[0:w]
-        theta_meas = theta_meas_full[0:w]
 
         for p in range(30):
 
@@ -1389,6 +1376,7 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
 
             dd_dd = np.dot(np.linalg.inv(dd), d)
             x_est = x_est - dd_dd
+            print(x_est)
 
         if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
             if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
