@@ -97,7 +97,6 @@ def process_measurements(data, config):
         # число точек для отрешивания траектории
         N = 300
         g = 9.8155
-        config.m = 43.56
 
         # данные ТЗ
         sko_R_tz = 5
