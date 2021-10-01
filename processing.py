@@ -3,7 +3,6 @@ import pymap3d as pm
 import ctypes
 import traceback
 
-
 from function import length_winlen, func_linear_piece_app, func_linear_piece_estimation, \
     func_quad_piece_app, func_quad_piece_estimation, func_derivation, func_filter_data, func_active_reactive, \
     func_wind, func_tochka_fall, func_derivation_bullet, func_linear_piece_estimation_error, \
@@ -125,7 +124,7 @@ def process_measurements(data, config):
 
         try:
             for i in range(Ndlen):
-                t_meas[i] = data["points"][i]["execTime"]
+                t_meas[i] = data["points"][i]["execTime_sec"]
                 R_meas[i] = data["points"][i]["R"]
                 Vr_meas[i] = abs(data["points"][i]["Vr"])
                 # углы в радианах
@@ -187,12 +186,12 @@ def process_measurements(data, config):
                 print(x_est_start)
 
                 x_est_app_start = func_quad_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
-                                                              config.can_Y,
-                                                              config.m, g, config.SKO_R,
-                                                              config.SKO_Vr, config.SKO_theta, x_est_start, t_meas,
-                                                              R_meas_filter, Vr_meas_filter,
-                                                              theta_meas_filter,
-                                                              window_set, parameters_bounds)
+                                                            config.can_Y,
+                                                            config.m, g, config.SKO_R,
+                                                            config.SKO_Vr, config.SKO_theta, x_est_start, t_meas,
+                                                            R_meas_filter, Vr_meas_filter,
+                                                            theta_meas_filter,
+                                                            window_set, parameters_bounds)
                 print(x_est_app_start)
 
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
@@ -207,12 +206,23 @@ def process_measurements(data, config):
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
-                                                           config.m, g, x_tr_er_plot, h_tr_er_plot, Vx_true_er_plot,
-                                                           Vh_true_er_plot, V_abs_est_plot, Ax_true_er_plot,
-                                                           Ah_true_er_plot, A_abs_est_plot, alpha_tr_er_plot,
-                                                           t_meas_plot, R_est_full_plot, Vr_est_full_plot,
-                                                           theta_est_full_plot, config.loc_X, config.loc_Y,
-                                                           config.loc_Z, config.hei)
+                                                                                               config.m, g,
+                                                                                               x_tr_er_plot,
+                                                                                               h_tr_er_plot,
+                                                                                               Vx_true_er_plot,
+                                                                                               Vh_true_er_plot,
+                                                                                               V_abs_est_plot,
+                                                                                               Ax_true_er_plot,
+                                                                                               Ah_true_er_plot,
+                                                                                               A_abs_est_plot,
+                                                                                               alpha_tr_er_plot,
+                                                                                               t_meas_plot,
+                                                                                               R_est_full_plot,
+                                                                                               Vr_est_full_plot,
+                                                                                               theta_est_full_plot,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -247,11 +257,11 @@ def process_measurements(data, config):
                 Vd = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
 
                 # создание выходного трэка
-                track_points = {}
-                points = []
+                track_meas = {}
+                meas = []
 
                 for i in range(len(t_start)):
-                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                    meas.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
                                    "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
                                    "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
                                    "Ax": Ax_true_start[i],
@@ -262,7 +272,7 @@ def process_measurements(data, config):
 
                 for i in range(len(t_meas_plot)):
                     for j in range(len(t_meas_plot[i]) - 1):
-                        points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                        meas.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                        "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                        "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
                                        "Ax": Ax_true_er_plot[i][j],
@@ -272,7 +282,7 @@ def process_measurements(data, config):
                                        "VrR": Vr_est_full_plot[i][j], "EvR": np.rad2deg(theta_est_full_plot[i][j])})
 
                 for i in range(len(t_fin)):
-                    points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                    meas.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
                                    "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
                                    "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
                                    "Ax": Ax_true_fin[i],
@@ -282,25 +292,25 @@ def process_measurements(data, config):
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
                 # углы в градусах
-                points_sampling = sampling_points(points, TD)
+                meas_sampling = sampling_meas(meas, TD)
 
-                track_points["points"] = points_sampling
-                track_points["endpoint_x"] = x_true_fin[-1]
-                track_points["endpoint_y"] = h_true_fin[-1]
-                track_points["endpoint_z"] = z
-                track_points["endpoint_GK_x"] = x_fall_gk[0]
-                track_points["endpoint_GK_z"] = z_fall_gk[0]
-                track_points["Vb"] = Vb
-                track_points["Vd"] = Vd
-                track_points["SKO_R"] = sko_R_meas
-                track_points["SKO_V"] = sko_Vr_meas
-                track_points["SKO_theta"] = sko_theta_meas
-                track_points["valid"] = True
+                track_meas["points"] = meas_sampling
+                track_meas["endpoint_x"] = x_true_fin[-1]
+                track_meas["endpoint_y"] = h_true_fin[-1]
+                track_meas["endpoint_z"] = z
+                track_meas["endpoint_GK_x"] = x_fall_gk[0]
+                track_meas["endpoint_GK_z"] = z_fall_gk[0]
+                track_meas["Vb"] = Vb
+                track_meas["Vd"] = Vd
+                track_meas["SKO_R"] = sko_R_meas
+                track_meas["SKO_V"] = sko_Vr_meas
+                track_meas["SKO_theta"] = sko_theta_meas
+                track_meas["valid"] = True
 
                 for i in range(len(az_meas) - 1):
-                    for j in range(len(track_points["points"])):
-                        if t_meas[i] <= track_points["points"][j]["t"] < t_meas[i + 1]:
-                            track_points["points"][j]["AzR"] = az_meas[i]
+                    for j in range(len(track_meas["points"])):
+                        if t_meas[i] <= track_meas["points"][j]["t"] < t_meas[i + 1]:
+                            track_meas["points"][j]["AzR"] = az_meas[i]
 
                 print(x_true_fin[-1], 'х - точки падения')
                 print(h_true_fin[-1], 'h - точки падения')
@@ -327,7 +337,6 @@ def process_measurements(data, config):
 
                 Cx = 0.185
                 r = 0.082 / 2
-
 
                 parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
 
@@ -373,14 +382,23 @@ def process_measurements(data, config):
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
-                                                           config.m, g, x_tr_er_plot, h_tr_er_plot, Vx_true_er_plot,
-                                                           Vh_true_er_plot, V_abs_est_plot, Ax_true_er_plot,
-                                                           Ah_true_er_plot, A_abs_est_plot, alpha_tr_er_plot,
-                                                           t_meas_plot, R_est_full_plot, Vr_est_full_plot,
-                                                           theta_est_full_plot, config.loc_X, config.loc_Y,
-                                                           config.loc_Z, config.hei)
-
-
+                                                                                               config.m, g,
+                                                                                               x_tr_er_plot,
+                                                                                               h_tr_er_plot,
+                                                                                               Vx_true_er_plot,
+                                                                                               Vh_true_er_plot,
+                                                                                               V_abs_est_plot,
+                                                                                               Ax_true_er_plot,
+                                                                                               Ah_true_er_plot,
+                                                                                               A_abs_est_plot,
+                                                                                               alpha_tr_er_plot,
+                                                                                               t_meas_plot,
+                                                                                               R_est_full_plot,
+                                                                                               Vr_est_full_plot,
+                                                                                               theta_est_full_plot,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_linear_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -411,12 +429,11 @@ def process_measurements(data, config):
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
 
-                track_points = {}
-                points = []
-
+                track_meas = {}
+                meas = []
 
                 for i in range(len(t_start)):
-                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                    meas.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
                                    "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
                                    "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
                                    "Ax": Ax_true_start[i],
@@ -427,7 +444,7 @@ def process_measurements(data, config):
 
                 for i in range(len(t_meas_plot)):
                     for j in range(len(t_meas_plot[i]) - 1):
-                        points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                        meas.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                        "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                        "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
                                        "Ax": Ax_true_er_plot[i][j],
@@ -437,7 +454,7 @@ def process_measurements(data, config):
                                        "VrR": Vr_est_full_plot[i][j], "EvR": np.rad2deg(theta_est_full_plot[i][j])})
 
                 for i in range(len(t_fin)):
-                    points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                    meas.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
                                    "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
                                    "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
                                    "Ax": Ax_true_fin[i],
@@ -446,26 +463,26 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
                 # углы в градусах
-                points_sampling = sampling_points(points, TD)
+                meas_sampling = sampling_meas(meas, TD)
 
-                track_points["points"] = points_sampling
-                track_points["endpoint_x"] = x_true_fin[-1]
-                track_points["endpoint_y"] = h_true_fin[-1]
-                track_points["endpoint_z"] = z
-                track_points["endpoint_GK_x"] = x_fall_gk[0]
-                track_points["endpoint_GK_z"] = z_fall_gk[0]
-                track_points["Vb"] = Vb
-                track_points["Vd"] = Vd
-                track_points["SKO_R"] = sko_R_meas
-                track_points["SKO_V"] = sko_Vr_meas
-                track_points["SKO_theta"] = sko_theta_meas
-                track_points["valid"] = True
+                track_meas["points"] = meas_sampling
+                track_meas["endpoint_x"] = x_true_fin[-1]
+                track_meas["endpoint_y"] = h_true_fin[-1]
+                track_meas["endpoint_z"] = z
+                track_meas["endpoint_GK_x"] = x_fall_gk[0]
+                track_meas["endpoint_GK_z"] = z_fall_gk[0]
+                track_meas["Vb"] = Vb
+                track_meas["Vd"] = Vd
+                track_meas["SKO_R"] = sko_R_meas
+                track_meas["SKO_V"] = sko_Vr_meas
+                track_meas["SKO_theta"] = sko_theta_meas
+                track_meas["valid"] = True
 
                 # заполнения азимута
                 for i in range(len(az_meas) - 1):
-                    for j in range(len(track_points["points"])):
-                        if t_meas[i] <= track_points["points"][j]["t"] < t_meas[i + 1]:
-                            track_points["points"][j]["AzR"] = az_meas[i]
+                    for j in range(len(track_meas["points"])):
+                        if t_meas[i] <= track_meas["points"][j]["t"] < t_meas[i + 1]:
+                            track_meas["points"][j]["AzR"] = az_meas[i]
 
                 print(x_true_fin[-1], 'х - точки падения')
                 print(h_true_fin[-1], 'h - точки падения')
@@ -550,12 +567,23 @@ def process_measurements(data, config):
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
-                                                           config.m, g, x_tr_er_plot, h_tr_er_plot, Vx_true_er_plot,
-                                                           Vh_true_er_plot, V_abs_est_plot, Ax_true_er_plot,
-                                                           Ah_true_er_plot, A_abs_est_plot, alpha_tr_er_plot,
-                                                           t_meas_plot, R_est_full_plot, Vr_est_full_plot,
-                                                           theta_est_full_plot, config.loc_X, config.loc_Y,
-                                                           config.loc_Z, config.hei)
+                                                                                               config.m, g,
+                                                                                               x_tr_er_plot,
+                                                                                               h_tr_er_plot,
+                                                                                               Vx_true_er_plot,
+                                                                                               Vh_true_er_plot,
+                                                                                               V_abs_est_plot,
+                                                                                               Ax_true_er_plot,
+                                                                                               Ah_true_er_plot,
+                                                                                               A_abs_est_plot,
+                                                                                               alpha_tr_er_plot,
+                                                                                               t_meas_plot,
+                                                                                               R_est_full_plot,
+                                                                                               Vr_est_full_plot,
+                                                                                               theta_est_full_plot,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -586,11 +614,11 @@ def process_measurements(data, config):
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
 
-                track_points = {}
-                points = []
+                track_meas = {}
+                meas = []
 
                 for i in range(len(t_start)):
-                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                    meas.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
                                    "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
                                    "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
                                    "Ax": Ax_true_start[i],
@@ -601,7 +629,7 @@ def process_measurements(data, config):
 
                 for i in range(len(t_meas_plot)):
                     for j in range(len(t_meas_plot[i]) - 1):
-                        points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                        meas.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                        "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                        "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
                                        "Ax": Ax_true_er_plot[i][j],
@@ -611,7 +639,7 @@ def process_measurements(data, config):
                                        "VrR": Vr_est_full_plot[i][j], "EvR": np.rad2deg(theta_est_full_plot[i][j])})
 
                 for i in range(len(t_fin)):
-                    points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                    meas.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
                                    "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
                                    "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
                                    "Ax": Ax_true_fin[i],
@@ -620,25 +648,25 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
                 # углы в градусах
-                points_sampling = sampling_points(points, TD)
+                meas_sampling = sampling_meas(meas, TD)
 
-                track_points["points"] = points_sampling
-                track_points["endpoint_x"] = x_true_fin[-1]
-                track_points["endpoint_y"] = h_true_fin[-1]
-                track_points["endpoint_z"] = z
-                track_points["endpoint_GK_x"] = x_fall_gk[0]
-                track_points["endpoint_GK_z"] = z_fall_gk[0]
-                track_points["Vb"] = Vb
-                track_points["Vd"] = Vd
-                track_points["SKO_R"] = sko_R_meas
-                track_points["SKO_V"] = sko_Vr_meas
-                track_points["SKO_theta"] = sko_theta_meas
-                track_points["valid"] = True
+                track_meas["points"] = meas_sampling
+                track_meas["endpoint_x"] = x_true_fin[-1]
+                track_meas["endpoint_y"] = h_true_fin[-1]
+                track_meas["endpoint_z"] = z
+                track_meas["endpoint_GK_x"] = x_fall_gk[0]
+                track_meas["endpoint_GK_z"] = z_fall_gk[0]
+                track_meas["Vb"] = Vb
+                track_meas["Vd"] = Vd
+                track_meas["SKO_R"] = sko_R_meas
+                track_meas["SKO_V"] = sko_Vr_meas
+                track_meas["SKO_theta"] = sko_theta_meas
+                track_meas["valid"] = True
 
                 for i in range(len(az_meas) - 1):
-                    for j in range(len(track_points["points"])):
-                        if t_meas[i] <= track_points["points"][j]["t"] < t_meas[i + 1]:
-                            track_points["points"][j]["AzR"] = az_meas[i]
+                    for j in range(len(track_meas["points"])):
+                        if t_meas[i] <= track_meas["points"][j]["t"] < t_meas[i + 1]:
+                            track_meas["points"][j]["AzR"] = az_meas[i]
 
                 print(x_true_fin[-1], 'х - точки падения')
                 print(h_true_fin[-1], 'h - точки падения')
@@ -713,12 +741,23 @@ def process_measurements(data, config):
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
-                                                           config.m, g, x_tr_er_plot, h_tr_er_plot, Vx_true_er_plot,
-                                                           Vh_true_er_plot, V_abs_est_plot, Ax_true_er_plot,
-                                                           Ah_true_er_plot, A_abs_est_plot, alpha_tr_er_plot,
-                                                           t_meas_plot, R_est_full_plot, Vr_est_full_plot,
-                                                           theta_est_full_plot, config.loc_X, config.loc_Y,
-                                                           config.loc_Z, config.hei)
+                                                                                               config.m, g,
+                                                                                               x_tr_er_plot,
+                                                                                               h_tr_er_plot,
+                                                                                               Vx_true_er_plot,
+                                                                                               Vh_true_er_plot,
+                                                                                               V_abs_est_plot,
+                                                                                               Ax_true_er_plot,
+                                                                                               Ah_true_er_plot,
+                                                                                               A_abs_est_plot,
+                                                                                               alpha_tr_er_plot,
+                                                                                               t_meas_plot,
+                                                                                               R_est_full_plot,
+                                                                                               Vr_est_full_plot,
+                                                                                               theta_est_full_plot,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -751,11 +790,11 @@ def process_measurements(data, config):
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
 
-                track_points = {}
-                points = []
+                track_meas = {}
+                meas = []
 
                 for i in range(len(t_start)):
-                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                    meas.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
                                    "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
                                    "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
                                    "Ax": Ax_true_start[i],
@@ -766,7 +805,7 @@ def process_measurements(data, config):
 
                 for i in range(len(t_meas_plot)):
                     for j in range(len(t_meas_plot[i]) - 1):
-                        points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                        meas.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                        "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                        "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
                                        "Ax": Ax_true_er_plot[i][j],
@@ -776,7 +815,7 @@ def process_measurements(data, config):
                                        "VrR": Vr_est_full_plot[i][j], "EvR": np.rad2deg(theta_est_full_plot[i][j])})
 
                 for i in range(len(t_fin)):
-                    points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                    meas.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
                                    "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
                                    "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
                                    "Ax": Ax_true_fin[i],
@@ -785,24 +824,24 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
-                points_sampling = sampling_points(points, TD)
-                track_points["points"] = points_sampling
-                track_points["endpoint_x"] = x_true_fin[-1]
-                track_points["endpoint_y"] = h_true_fin[-1]
-                track_points["endpoint_z"] = z
-                track_points["endpoint_GK_x"] = x_fall_gk[0]
-                track_points["endpoint_GK_z"] = z_fall_gk[0]
-                track_points["Vb"] = Vb
-                track_points["Vd"] = Vd
-                track_points["SKO_R"] = sko_R_meas
-                track_points["SKO_V"] = sko_Vr_meas
-                track_points["SKO_theta"] = sko_theta_meas
-                track_points["valid"] = True
+                meas_sampling = sampling_meas(meas, TD)
+                track_meas["points"] = meas_sampling
+                track_meas["endpoint_x"] = x_true_fin[-1]
+                track_meas["endpoint_y"] = h_true_fin[-1]
+                track_meas["endpoint_z"] = z
+                track_meas["endpoint_GK_x"] = x_fall_gk[0]
+                track_meas["endpoint_GK_z"] = z_fall_gk[0]
+                track_meas["Vb"] = Vb
+                track_meas["Vd"] = Vd
+                track_meas["SKO_R"] = sko_R_meas
+                track_meas["SKO_V"] = sko_Vr_meas
+                track_meas["SKO_theta"] = sko_theta_meas
+                track_meas["valid"] = True
 
                 for i in range(len(az_meas) - 1):
-                    for j in range(len(track_points["points"])):
-                        if t_meas[i] <= track_points["points"][j]["t"] < t_meas[i + 1]:
-                            track_points["points"][j]["AzR"] = az_meas[i]
+                    for j in range(len(track_meas["points"])):
+                        if t_meas[i] <= track_meas["points"][j]["t"] < t_meas[i + 1]:
+                            track_meas["points"][j]["AzR"] = az_meas[i]
 
                 print(x_true_fin[-1], 'х - точки падения')
                 print(h_true_fin[-1], 'h - точки падения')
@@ -938,12 +977,23 @@ def process_measurements(data, config):
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
-                                                           config.m, g, x_tr_er_plot_2, h_tr_er_plot_2, Vx_true_er_plot_2,
-                                                           Vh_true_er_plot_2, V_abs_full_plot_2, Ax_true_er_plot_2,
-                                                           Ah_true_er_plot_2, A_abs_est_plot_2, alpha_tr_er_plot_2,
-                                                           t_meas_plot_2, R_est_full_plot_2, Vr_est_full_plot_2,
-                                                           theta_est_full_plot_2, config.loc_X, config.loc_Y,
-                                                           config.loc_Z, config.hei)
+                                                                                               config.m, g,
+                                                                                               x_tr_er_plot_2,
+                                                                                               h_tr_er_plot_2,
+                                                                                               Vx_true_er_plot_2,
+                                                                                               Vh_true_er_plot_2,
+                                                                                               V_abs_full_plot_2,
+                                                                                               Ax_true_er_plot_2,
+                                                                                               Ah_true_er_plot_2,
+                                                                                               A_abs_est_plot_2,
+                                                                                               alpha_tr_er_plot_2,
+                                                                                               t_meas_plot_2,
+                                                                                               R_est_full_plot_2,
+                                                                                               Vr_est_full_plot_2,
+                                                                                               theta_est_full_plot_2,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err_1, Vr_est_err_1, theta_est_err_1, t_err_plot_1, R_er_plot_1, Vr_er_plot_1, theta_er_plot_1 = func_quad_piece_estimation_error(
                     xhy_0_set_1, x_est_fin_1,
@@ -1000,11 +1050,11 @@ def process_measurements(data, config):
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
 
-                track_points = {}
-                points = []
+                track_meas = {}
+                meas = []
 
                 for i in range(len(t_start)):
-                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                    meas.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
                                    "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
                                    "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
                                    "Ax": Ax_true_start[i],
@@ -1015,7 +1065,7 @@ def process_measurements(data, config):
 
                 for i in range(len(t_meas_plot_1)):
                     for j in range(len(t_meas_plot_1[i]) - 1):
-                        points.append({"t": t_meas_plot_1[i][j], "x": x_tr_er_plot_1[i][j], "y": h_tr_er_plot_1[i][j],
+                        meas.append({"t": t_meas_plot_1[i][j], "x": x_tr_er_plot_1[i][j], "y": h_tr_er_plot_1[i][j],
                                        "z": 0, "V": V_abs_full_plot_1[i][j], "Vx": Vx_true_er_plot_1[i][j],
                                        "Vy": Vh_true_er_plot_1[i][j], "Vz": 0, "A": A_abs_est_plot_1[i][j],
                                        "Ax": Ax_true_er_plot_1[i][j],
@@ -1025,7 +1075,7 @@ def process_measurements(data, config):
                                        "VrR": Vr_est_full_plot_1[i][j], "EvR": np.rad2deg(theta_est_full_plot_1[i][j])})
 
                 for i in range(len(t_tr_act_est)):
-                    points.append({"t": t_tr_act_est[i], "x": x_tr_act_est[i], "y": h_tr_act_est[i],
+                    meas.append({"t": t_tr_act_est[i], "x": x_tr_act_est[i], "y": h_tr_act_est[i],
                                    "z": 0, "V": V_abs_tr_act_est[i], "Vx": Vx_tr_act_est[i],
                                    "Vy": Vh_tr_act_est[i], "Vz": 0, "A": A_abs_tr_act_est[i],
                                    "Ax": Ax_tr_act_est[i],
@@ -1036,7 +1086,7 @@ def process_measurements(data, config):
 
                 for i in range(len(t_meas_plot_2)):
                     for j in range(len(t_meas_plot_2[i]) - 1):
-                        points.append({"t": t_meas_plot_2[i][j], "x": x_tr_er_plot_2[i][j], "y": h_tr_er_plot_2[i][j],
+                        meas.append({"t": t_meas_plot_2[i][j], "x": x_tr_er_plot_2[i][j], "y": h_tr_er_plot_2[i][j],
                                        "z": 0, "V": V_abs_full_plot_2[i][j], "Vx": Vx_true_er_plot_2[i][j],
                                        "Vy": Vh_true_er_plot_2[i][j], "Vz": 0, "A": A_abs_est_plot_2[i][j],
                                        "Ax": Ax_true_er_plot_2[i][j],
@@ -1046,7 +1096,7 @@ def process_measurements(data, config):
                                        "VrR": Vr_est_full_plot_2[i][j], "EvR": np.rad2deg(theta_est_full_plot_2[i][j])})
 
                 for i in range(len(t_fin)):
-                    points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                    meas.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
                                    "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
                                    "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
                                    "Ax": Ax_true_fin[i],
@@ -1055,25 +1105,25 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
-                points_sampling = sampling_points(points, TD)
+                meas_sampling = sampling_meas(meas, TD)
 
-                track_points["points"] = points_sampling
-                track_points["endpoint_x"] = x_true_fin[-1]
-                track_points["endpoint_y"] = h_true_fin[-1]
-                track_points["endpoint_z"] = z
-                track_points["endpoint_GK_x"] = x_fall_gk[0]
-                track_points["endpoint_GK_z"] = z_fall_gk[0]
-                track_points["Vb"] = Vb
-                track_points["Vd"] = Vd
-                track_points["SKO_R"] = sko_R_meas
-                track_points["SKO_V"] = sko_Vr_meas
-                track_points["SKO_theta"] = sko_theta_meas
-                track_points["valid"] = True
+                track_meas["points"] = meas_sampling
+                track_meas["endpoint_x"] = x_true_fin[-1]
+                track_meas["endpoint_y"] = h_true_fin[-1]
+                track_meas["endpoint_z"] = z
+                track_meas["endpoint_GK_x"] = x_fall_gk[0]
+                track_meas["endpoint_GK_z"] = z_fall_gk[0]
+                track_meas["Vb"] = Vb
+                track_meas["Vd"] = Vd
+                track_meas["SKO_R"] = sko_R_meas
+                track_meas["SKO_V"] = sko_Vr_meas
+                track_meas["SKO_theta"] = sko_theta_meas
+                track_meas["valid"] = True
 
                 for i in range(len(az_meas) - 1):
-                    for j in range(len(track_points["points"])):
-                        if t_meas[i] <= track_points["points"][j]["t"] < t_meas[i + 1]:
-                            track_points["points"][j]["AzR"] = az_meas[i]
+                    for j in range(len(track_meas["points"])):
+                        if t_meas[i] <= track_meas["points"][j]["t"] < t_meas[i + 1]:
+                            track_meas["points"][j]["AzR"] = az_meas[i]
 
                 print(x_true_fin[-1], 'х - точки падения')
                 print(h_true_fin[-1], 'h - точки падения')
@@ -1158,12 +1208,23 @@ def process_measurements(data, config):
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
-                                                           config.m, g, x_tr_er_plot, h_tr_er_plot, Vx_true_er_plot,
-                                                           Vh_true_er_plot, V_abs_est_plot, Ax_true_er_plot,
-                                                           Ah_true_er_plot, A_abs_est_plot, alpha_tr_er_plot,
-                                                           t_meas_plot, R_est_full_plot, Vr_est_full_plot,
-                                                           theta_est_full_plot, config.loc_X, config.loc_Y,
-                                                           config.loc_Z, config.hei)
+                                                                                               config.m, g,
+                                                                                               x_tr_er_plot,
+                                                                                               h_tr_er_plot,
+                                                                                               Vx_true_er_plot,
+                                                                                               Vh_true_er_plot,
+                                                                                               V_abs_est_plot,
+                                                                                               Ax_true_er_plot,
+                                                                                               Ah_true_er_plot,
+                                                                                               A_abs_est_plot,
+                                                                                               alpha_tr_er_plot,
+                                                                                               t_meas_plot,
+                                                                                               R_est_full_plot,
+                                                                                               Vr_est_full_plot,
+                                                                                               theta_est_full_plot,
+                                                                                               config.loc_X,
+                                                                                               config.loc_Y,
+                                                                                               config.loc_Z, config.hei)
 
                 R_est_err, Vr_est_err, theta_est_err, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot = func_quad_piece_estimation_error(
                     xhy_0_set, x_est_fin,
@@ -1196,11 +1257,11 @@ def process_measurements(data, config):
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
 
-                track_points = {}
-                points = []
+                track_meas = {}
+                meas = []
 
                 for i in range(len(t_start)):
-                    points.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
+                    meas.append({"t": t_start[i], "x": x_true_start[i], "y": h_true_start[i],
                                    "z": 0, "V": V_abs_true_start[i], "Vx": Vx_true_start[i],
                                    "Vy": Vh_true_start[i], "Vz": 0, "A": A_abs_true_start[i],
                                    "Ax": Ax_true_start[i],
@@ -1211,7 +1272,7 @@ def process_measurements(data, config):
 
                 for i in range(len(t_meas_plot)):
                     for j in range(len(t_meas_plot[i]) - 1):
-                        points.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                        meas.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
                                        "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
                                        "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
                                        "Ax": Ax_true_er_plot[i][j],
@@ -1221,7 +1282,7 @@ def process_measurements(data, config):
                                        "VrR": Vr_est_full_plot[i][j], "EvR": np.rad2deg(theta_est_full_plot[i][j])})
 
                 for i in range(len(t_fin)):
-                    points.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
+                    meas.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
                                    "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
                                    "Vy": Vh_true_fin[i], "Vz": 0, "A": A_abs_true_fin[i],
                                    "Ax": Ax_true_fin[i],
@@ -1230,19 +1291,19 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
-                points_sampling = sampling_points(points, TD)
-                track_points["points"] = points_sampling
-                track_points["endpoint_x"] = x_true_fin[-1]
-                track_points["endpoint_y"] = h_true_fin[-1]
-                track_points["endpoint_z"] = z
-                track_points["endpoint_GK_x"] = x_fall_gk[0]
-                track_points["endpoint_GK_z"] = z_fall_gk[0]
-                track_points["Vb"] = Vb
-                track_points["Vd"] = Vd
-                track_points["SKO_R"] = sko_R_meas
-                track_points["SKO_V"] = sko_Vr_meas
-                track_points["SKO_theta"] = sko_theta_meas
-                track_points["valid"] = True
+                meas_sampling = sampling_meas(meas, TD)
+                track_meas["points"] = meas_sampling
+                track_meas["endpoint_x"] = x_true_fin[-1]
+                track_meas["endpoint_y"] = h_true_fin[-1]
+                track_meas["endpoint_z"] = z
+                track_meas["endpoint_GK_x"] = x_fall_gk[0]
+                track_meas["endpoint_GK_z"] = z_fall_gk[0]
+                track_meas["Vb"] = Vb
+                track_meas["Vd"] = Vd
+                track_meas["SKO_R"] = sko_R_meas
+                track_meas["SKO_V"] = sko_Vr_meas
+                track_meas["SKO_theta"] = sko_theta_meas
+                track_meas["valid"] = True
 
                 print(x_true_fin[-1], 'х - точки падения')
                 print(h_true_fin[-1], 'h - точки падения')
@@ -1264,7 +1325,7 @@ def process_measurements(data, config):
                 ctypes.windll.user32.MessageBoxW(None, "Проверьте на соответствие тип снаряда", "Ошибка!", 0)
 
         if config.flag_return == 1:
-            config.track = track_points
+            config.track = track_meas
             config.track_meas = track_meas
 
         flag = 1
