@@ -91,6 +91,9 @@ def process_initial_data(mes, config):
 
 
 def process_measurements(data, config):
+    
+    track_meas = 'nan'
+    
     if config.ini_data_flag:
 
         # число точек для отрешивания траектории
@@ -121,10 +124,15 @@ def process_measurements(data, config):
         Vr_meas = np.zeros(Ndlen)
         theta_meas = np.zeros(Ndlen)
         az_meas = np.zeros(Ndlen)
+        
+        sR = 0
+        sVr = 0
+        stheta = 0
+        TD = 0
 
         try:
             for i in range(Ndlen):
-                t_meas[i] = data["points"][i]["execTime_sec"]
+                t_meas[i] = data["points"][i]["execTime"]
                 R_meas[i] = data["points"][i]["R"]
                 Vr_meas[i] = abs(data["points"][i]["Vr"])
                 # углы в радианах
@@ -151,7 +159,10 @@ def process_measurements(data, config):
         if config.bullet_type == 1 or config.bullet_type == 2:  # 5.45 bullet or 7.65 bullet
 
             try:
-
+                
+                Cx = 0 
+                r = 0
+                
                 if config.bullet_type == 1:
                     Cx = 0.38
                     r = 0.00545 / 2
@@ -243,12 +254,12 @@ def process_measurements(data, config):
                                                                                           sko_theta_tz)
 
                 # для пуль требуется учитывать и ветер и деривацию
-                z_deriv = func_derivation_bullet(config.m, config.d, config.l, config.eta, K_inch, K_gran, K_fut,
+                z_derivation = func_derivation_bullet(config.m, config.d, config.l, config.eta, K_inch, K_gran, K_fut,
                                                  config.v0,
                                                  t_fin[-1])
                 z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
-                z = z_wind + z_deriv
+                z = z_wind + z_derivation
 
                 x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], config.can_B, config.can_L, config.az)
 
@@ -292,7 +303,7 @@ def process_measurements(data, config):
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
                 # углы в градусах
-                meas_sampling = sampling_meas(meas, TD)
+                meas_sampling = sampling_points(meas, TD)
 
                 track_meas["points"] = meas_sampling
                 track_meas["endpoint_x"] = x_true_fin[-1]
@@ -463,7 +474,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
                 # углы в градусах
-                meas_sampling = sampling_meas(meas, TD)
+                meas_sampling = sampling_points(meas, TD)
 
                 track_meas["points"] = meas_sampling
                 track_meas["endpoint_x"] = x_true_fin[-1]
@@ -510,13 +521,14 @@ def process_measurements(data, config):
                 Cx = 0.295
                 r = 0.122 / 2
 
-                # обрезка участка
+                # обрезка участка ускорения
                 time_in = 0
                 for i in range(len(t_meas)):
-                    # если время больше трех секунд
                     if t_meas[i] > 3:
                         time_in = i
                         break
+
+                # переделать участок, берем траекторию, когда ускорение меньше нуля!
 
                 t_meas = t_meas[time_in:]
                 R_meas = R_meas[time_in:]
@@ -648,7 +660,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
                 # углы в градусах
-                meas_sampling = sampling_meas(meas, TD)
+                meas_sampling = sampling_points(meas, TD)
 
                 track_meas["points"] = meas_sampling
                 track_meas["endpoint_x"] = x_true_fin[-1]
@@ -777,12 +789,12 @@ def process_measurements(data, config):
                                                                                           sko_Vr_tz,
                                                                                           sko_theta_tz)
 
-                z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
+                z_derivation = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
 
                 z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
 
-                z = z_wind + z_deriv
+                z = z_wind + z_derivation
 
                 x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], config.can_B, config.can_L,
                                                         config.az)
@@ -824,7 +836,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
-                meas_sampling = sampling_meas(meas, TD)
+                meas_sampling = sampling_points(meas, TD)
                 track_meas["points"] = meas_sampling
                 track_meas["endpoint_x"] = x_true_fin[-1]
                 track_meas["endpoint_y"] = h_true_fin[-1]
@@ -1035,14 +1047,14 @@ def process_measurements(data, config):
                                                                                           sko_Vr_tz,
                                                                                           sko_theta_tz)
 
-                z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
+                z_derivation = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
 
-                print(z_deriv, "z_deriv")
+                print(z_derivation, "z_derivation")
 
                 z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
 
-                z = z_wind + z_deriv
+                z = z_wind + z_derivation
 
                 x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], config.can_B, config.can_L,
                                                         config.az)
@@ -1105,7 +1117,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
-                meas_sampling = sampling_meas(meas, TD)
+                meas_sampling = sampling_points(meas, TD)
 
                 track_meas["points"] = meas_sampling
                 track_meas["endpoint_x"] = x_true_fin[-1]
@@ -1244,12 +1256,12 @@ def process_measurements(data, config):
                                                                                           sko_Vr_tz,
                                                                                           sko_theta_tz)
 
-                z_deriv = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
+                z_derivation = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
 
                 z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
 
-                z = z_wind + z_deriv
+                z = z_wind + z_derivation
 
                 x_fall_gk, z_fall_gk = func_tochka_fall(z, x_true_fin[-1], config.can_B, config.can_L,
                                                         config.az)
@@ -1291,7 +1303,7 @@ def process_measurements(data, config):
                                    "DistanceR": R_true_fin[i], "AzR": 0,
                                    "VrR": Vr_true_fin[i], "EvR": np.rad2deg(theta_true_fin[i])})
 
-                meas_sampling = sampling_meas(meas, TD)
+                meas_sampling = sampling_points(meas, TD)
                 track_meas["points"] = meas_sampling
                 track_meas["endpoint_x"] = x_true_fin[-1]
                 track_meas["endpoint_y"] = h_true_fin[-1]

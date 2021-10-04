@@ -101,7 +101,7 @@ class Config():
 
         # flag_return
         self.flag_return = 0
-        # ыходная кодограмма
+        # иходная кодограмма
         self.track = []
         # помеченные измерения на валидность
         self.track_meas = []
