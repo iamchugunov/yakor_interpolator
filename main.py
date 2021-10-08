@@ -46,7 +46,6 @@ while True:
 
         if rcv_type == 0x150001:
             pr.process_initial_data(data, config)
-
         if rcv_type == 0x150002:
 
             if config.ini_data_flag:

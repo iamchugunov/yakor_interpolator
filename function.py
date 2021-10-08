@@ -166,6 +166,17 @@ def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_th
     return R_meas, Vr_meas, theta_meas
 
 
+# исключение одиночных выбросов
+def func_emissions_theta(theta_meas, thres_theta):
+    bad_ind = []
+    for i in range(1, len(theta_meas) - 1):
+        theta_diff_prev = theta_meas[i] - theta_meas[i - 1]
+        theta_diff_next = theta_meas[i] - theta_meas[i + 1]
+        if abs(theta_diff_prev) > thres_theta and abs(theta_diff_next) > thres_theta:
+            bad_ind.append(i)
+    return bad_ind
+
+
 # разбиение на участки для активно-реактивного снаряда - type_bullet = 6
 def func_active_reactive(t_meas, R_meas, Vr_meas):
     Thres_dRdt = 2000
@@ -549,7 +560,6 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
         x_est = x_est_start
         x_0 = 0
         h_0 = 0
-
 
         t_meas = t_meas_full[0:window_set[0][1]]
         R_meas = R_meas_full[0:window_set[0][1]]
@@ -1719,7 +1729,6 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
 
 # начальный участок траектории - оценка нулевой скорости
 def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas):
-
     N = 1000
 
     xhy_0_start = xhy_0_set[0]
@@ -1784,9 +1793,87 @@ def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_m
 
     return x_est
 
+
+# начальный участок для ускоренного снаряда
+def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
+    N = 1000
+
+    xhy_0_start = xhy_0_set[0]
+    x_est_start = x_est_top[0]
+
+    k0 = x_est_start[0].real
+    v0 = x_est_start[1].real
+    dR = x_est_start[2].real
+    alpha = x_est_start[3].real
+
+    x_0 = 0
+    h_0 = 0
+
+    tmin = 0
+    tmax = t_meas[0]
+
+    vx_0_pas = v0 * np.cos(alpha)
+    vh_0_pas = v0 * np.sin(alpha)
+    a_x_sr = vx_0_pas / tmax
+    a_h_sr = vh_0_pas / tmax
+
+    t = []
+
+    n = 0
+    for i in range(N):
+        if i == 0:
+            n = 0
+        else:
+            n += (tmax - tmin) / (N - 1)
+        t.append(n)
+
+    x_true_start = np.zeros(N)
+    h_true_start = np.zeros(N)
+    Vx_true_start = np.zeros(N)
+    Vh_true_start = np.zeros(N)
+    Ax_true_start = np.zeros(N)
+    Ah_true_start = np.zeros(N)
+    R_true_start = np.zeros(N)
+    Vr_true_start = np.zeros(N)
+    theta_true_start = np.zeros(N)
+    V_abs_true_start = np.zeros(N)
+    alpha_true_start = np.zeros(N)
+    A_abs_true_start = np.zeros(N)
+
+    for k in range(N):
+
+        if k == 0:
+            x_true_start[k] = x_0
+            h_true_start[k] = h_0
+            Vx_true_start[k] = 0
+            Vh_true_start[k] = 0
+            Ax_true_start[k] = a_x_sr
+            Ah_true_start[k] = a_h_sr
+
+        else:
+            Ax_true_start[k] = Ax_true_start[k - 1]
+            Vx_true_start[k] = Vx_true_start[k - 1] + Ax_true_start[k] * (t[k] - t[k - 1])
+            x_true_start[k] = x_true_start[k - 1] + Vx_true_start[k] * (t[k] - t[k - 1])
+            Ah_true_start[k] = Ah_true_start[k - 1]
+            Vh_true_start[k] = Vh_true_start[k - 1] + Ah_true_start[k] * (t[k] - t[k - 1])
+            h_true_start[k] = h_true_start[k - 1] + Vh_true_start[k] * (t[k] - t[k - 1])
+
+        V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
+        A_abs_true_start[k] = np.sqrt(Ax_true_start[k] ** 2 + Ah_true_start[k] ** 2)
+        R_true_start[k] = np.sqrt((x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
+        Vr_true_start[k] = (Vx_true_start[k] * (x_true_start[k] - x_L) + Vh_true_start[k] * (h_true_start[k] - h_L)) / np.sqrt(
+            (x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
+        theta_true_start[k] = np.arctan((h_true_start[k] - h_L) / np.sqrt((x_true_start[k] - x_L) ** 2 + y_L ** 2))
+        alpha_true_start[k] = np.arctan(Vh_true_start[k] / Vx_true_start[k])
+
+    return t, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
+           V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start
+
+
 # конечный участок траектории
 def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_end, Vh_tr_end, V_abs_tr_end, Ax_tr_end,
-                        Ah_tr_end, A_abs_tr_end, alpha_tr_end, t_meas, R_tr_end, Vr_tr_end, theta_tr_end, x_L, y_L, h_L, hei):
+                        Ah_tr_end, A_abs_tr_end, alpha_tr_end, t_meas, R_tr_end, Vr_tr_end, theta_tr_end, x_L, y_L, h_L,
+                        hei):
     # hei - высота щита для пуль - для других снарядов передается нулевая
 
     N = 10000

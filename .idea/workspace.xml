@@ -2,18 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b6d77691-9b53-4dce-ae52-b93f9961fb57" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/interpolator.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/interpolator.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.json" beforeDir="false" afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bullets.json" beforeDir="false" afterPath="$PROJECT_DIR$/bullets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/function.py" beforeDir="false" afterPath="$PROJECT_DIR$/function.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/grapfic.py" beforeDir="false" afterPath="$PROJECT_DIR$/grapfic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/processing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trackdata-act_react.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trackdata-do-8.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trackdata-kak-art.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trackini-act-react.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trackini-do-8.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trackini-kak-art.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/result/3poi-rszo.html" beforeDir="false" afterPath="$PROJECT_DIR$/result/3poi-rszo.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -103,10 +98,10 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../fake_server" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="RunManager" selected="Python.grapfic">
+  <component name="RunManager" selected="Python.main">
     <configuration name="gomain" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="interpolator" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -214,8 +209,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.grapfic" />
         <item itemvalue="Python.main" />
+        <item itemvalue="Python.grapfic" />
         <item itemvalue="Python.main_old2" />
         <item itemvalue="Python.gomain_2" />
         <item itemvalue="Python.gomain" />
@@ -278,6 +273,17 @@
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
     </layout-to-restore>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
     <expressions id="evaluateExpression">
