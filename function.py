@@ -1869,14 +1869,13 @@ def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
     return t, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
            V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start
 
-
 # конечный участок траектории
 def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_end, Vh_tr_end, V_abs_tr_end, Ax_tr_end,
                         Ah_tr_end, A_abs_tr_end, alpha_tr_end, t_meas, R_tr_end, Vr_tr_end, theta_tr_end, x_L, y_L, h_L,
                         hei):
     # hei - высота щита для пуль - для других снарядов передается нулевая
 
-    N = 10000
+    N = 1000
     dR = 5
 
     V0 = V_abs_tr_end[-1][-1]
@@ -1942,6 +1941,7 @@ def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_e
         else:
 
             mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_end[k - 1] / (R * T)))) / m
+            #mu_k[k] = 0.5 * Cx * (np.pi * r ** 2) * rho_0 / m
             Vx_true_end[k] = Vx_true_end[k - 1] + (
                     -mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vx_true_end[k - 1]) * \
                              (t[k] - t[k - 1])
@@ -1969,7 +1969,6 @@ def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_e
            Vr_true_end[:last_k], theta_true_end[:last_k], Vx_true_end[:last_k], \
            Vh_true_end[:last_k], V_abs_true_end[:last_k], alpha_true_end[:last_k], A_abs_true_end[:last_k], \
            Ax_true_end[:last_k], Ah_true_end[:last_k]
-
 
 # оцененные значения для линейной аппроксимации в момент измерений
 def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas,

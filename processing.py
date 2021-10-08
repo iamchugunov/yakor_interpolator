@@ -2,8 +2,6 @@ import numpy as np
 import pymap3d as pm
 import ctypes
 import traceback
-import plotly.graph_objs as go
-from plotly.subplots import make_subplots
 
 from function import length_winlen, func_linear_piece_app, func_linear_piece_estimation, \
     func_quad_piece_app, func_quad_piece_estimation, func_derivation, func_filter_data, func_active_reactive, \
@@ -112,6 +110,7 @@ def process_measurements(data, config):
         K_fut = 3.28084
 
         rho_0 = 1.225
+        # rho_0 = 1.29
         T = 288
         M = 0.0289644
         R = 8.31447
@@ -519,15 +518,15 @@ def process_measurements(data, config):
 
             try:
 
-                Cx = 0.32
+                Cx = 0.535  # 0.295; 0.54
                 r = 0.122 / 2
 
                 # обрезка участка ускорения
                 dv_dt = np.zeros(len(Vr_meas) - 1)
                 st_passive_ind = 0
                 for i in range(1, len(Vr_meas)):
-                    dv_dt[i-1] = (Vr_meas[i] - Vr_meas[i - 1]) / (t_meas[i] - t_meas[i - 1])
-                    if (i > 3) and (dv_dt[i - 1] < 0) and (dv_dt[i -2]) < 0:
+                    dv_dt[i - 1] = (Vr_meas[i] - Vr_meas[i - 1]) / (t_meas[i] - t_meas[i - 1])
+                    if (i > 3) and (dv_dt[i - 1] < 0) and (dv_dt[i - 2]) < 0:
                         st_passive_ind = i - 2
                         break
 
@@ -673,10 +672,10 @@ def process_measurements(data, config):
                 track_meas["SKO_theta"] = sko_theta_meas
                 track_meas["valid"] = True
 
-                # for i in range(len(az_meas) - 1):
-                #     for j in range(len(track_meas["points"])):
-                #         if t_meas[i] <= track_meas["points"][j]["t"] < t_meas[i + 1]:
-                #             track_meas["points"][j]["AzR"] = az_meas[i]
+                for i in range(len(az_meas) - 1):
+                    for j in range(len(track_meas["points"])):
+                        if t_meas[i] <= track_meas["points"][j]["t"] < t_meas[i + 1]:
+                            track_meas["points"][j]["AzR"] = az_meas[i]
 
                 print(x_true_fin[-1], 'х - точки падения')
                 print(h_true_fin[-1], 'h - точки падения')
