@@ -178,14 +178,53 @@ def func_emissions_theta(theta_meas, thres_theta):
 
 
 # разбиение на участки для активно-реактивного снаряда - type_bullet = 6
+# def func_active_reactive(t_meas, R_meas, Vr_meas):
+#     Thres_dRdt = 3000 #2000
+#     Thres_dVrdt = 200 #500
+#
+#     dRdt_set = np.diff(R_meas) / np.diff(t_meas)
+#     dVrdt_set = np.diff(Vr_meas) / np.diff(t_meas)
+#
+#     flag = 0
+#
+#     t_ind_end_1part = 0
+#     t_ind_start_2part = 0
+#
+#     for k in range(len(t_meas) - 1):
+#
+#         dRdt = dRdt_set[k]
+#         dVrdt = dVrdt_set[k]
+#
+#         if (np.abs(dVrdt) > Thres_dVrdt) and (flag == 0):
+#             flag = 1
+#             t_ind_end_1part = k
+#
+#         if np.abs(dRdt) > Thres_dRdt:
+#             t_ind_start_2part = k + 1
+#
+#     if t_ind_end_1part == 0 or t_ind_start_2part == 0:
+#         for i in range(len(t_meas) - 1):
+#             if t_meas[i + 1] - t_meas[i] > 1:
+#                 t_ind_end = t_meas[i]
+#                 t_ind_start = t_meas[i + 1]
+#
+#                 t_ind_end_1part = list(t_meas).index(t_ind_end) + 1
+#                 t_ind_start_2part = list(t_meas).index(t_ind_start)
+#
+#     print(t_ind_end_1part, t_ind_start_2part)
+#
+#     return t_ind_end_1part, t_ind_start_2part
+
+# разбиение на участки для активно-реактивного снаряда - type_bullet = 6
 def func_active_reactive(t_meas, R_meas, Vr_meas):
-    Thres_dRdt = 2000
-    Thres_dVrdt = 500
+    Thres_dRdt = 3000
+    Thres_dVrdt = 200
 
     dRdt_set = np.diff(R_meas) / np.diff(t_meas)
     dVrdt_set = np.diff(Vr_meas) / np.diff(t_meas)
 
     flag = 0
+    outliers_counter = 0
 
     t_ind_end_1part = 0
     t_ind_start_2part = 0
@@ -198,9 +237,13 @@ def func_active_reactive(t_meas, R_meas, Vr_meas):
         if (np.abs(dVrdt) > Thres_dVrdt) and (flag == 0):
             flag = 1
             t_ind_end_1part = k
+            outliers_counter += 1
 
         if np.abs(dRdt) > Thres_dRdt:
             t_ind_start_2part = k + 1
+
+        if outliers_counter == 1:
+            t_ind_start_2part = t_ind_end_1part + 1
 
     if t_ind_end_1part == 0 or t_ind_start_2part == 0:
         for i in range(len(t_meas) - 1):
@@ -214,7 +257,6 @@ def func_active_reactive(t_meas, R_meas, Vr_meas):
     print(t_ind_end_1part, t_ind_start_2part)
 
     return t_ind_end_1part, t_ind_start_2part
-
 
 # линейная аппроксимация измерений
 def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,

@@ -875,7 +875,7 @@ def process_measurements(data, config):
 
             try:
 
-                Cx = 0.26
+                Cx = 0.59
                 r = 0.152 / 2
 
                 K1 = 0.00324881940048771
