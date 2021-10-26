@@ -3,6 +3,8 @@ import ctypes
 import traceback
 from cmath import sqrt
 
+import time, sys
+
 from Derivatives_lin.R import dRdk_lin
 from Derivatives_lin.R import d2Rdk2_lin
 from Derivatives_lin.R import d2Rdv02_lin
@@ -63,8 +65,7 @@ import warnings
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-
-# определение длины окон для отрешивания
+# windowlen to cut the trajectory section
 def length_winlen(Ndlen):
     winlen = 0
     step_sld = 0
@@ -94,7 +95,7 @@ def length_winlen(Ndlen):
     return winlen, step_sld
 
 
-# фильтрация Калманом измерений угла
+# angular (theta) kalman filtering
 def kalman_filter_theta(x_est_prev, D_x_prev, y_meas, T, ksi_theta, theta_n1):
     F = np.array([[1, T], [0, 1]])
     G = np.array([[0, 0], [0, T]])
@@ -112,8 +113,12 @@ def kalman_filter_theta(x_est_prev, D_x_prev, y_meas, T, ksi_theta, theta_n1):
 
     return x_est, D_x
 
+# добавить двойную фильтрацию взамен старой
+# может добавить что быстрее отрешивает
+# есть ли у нас запрос на скорость? того как именно мы всё делаем
 
-# фильтрация Калманом измерений дальности и скорости
+
+# speed and range kalman filtering
 def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
     F = np.array([[1, T], [0, 1]])
     G = np.array([[0, 0], [0, T]])
@@ -132,8 +137,7 @@ def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
 
     return x_est, D_x
 
-
-# формирование фильтрованных массивов измерений
+# filtered measuring arrays
 def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_theta, theta_n1):
     x_est = np.zeros([len(t_meas), 2])
     x_est_theta = np.zeros([len(t_meas), 2])
@@ -166,7 +170,7 @@ def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_th
     return R_meas, Vr_meas, theta_meas
 
 
-# исключение одиночных выбросов
+# exclusion of single emissions from measurements of angle (theta)
 def func_emissions_theta(theta_meas, thres_theta):
     bad_ind = []
     for i in range(1, len(theta_meas) - 1):
@@ -177,45 +181,7 @@ def func_emissions_theta(theta_meas, thres_theta):
     return bad_ind
 
 
-# разбиение на участки для активно-реактивного снаряда - type_bullet = 6
-# def func_active_reactive(t_meas, R_meas, Vr_meas):
-#     Thres_dRdt = 3000 #2000
-#     Thres_dVrdt = 200 #500
-#
-#     dRdt_set = np.diff(R_meas) / np.diff(t_meas)
-#     dVrdt_set = np.diff(Vr_meas) / np.diff(t_meas)
-#
-#     flag = 0
-#
-#     t_ind_end_1part = 0
-#     t_ind_start_2part = 0
-#
-#     for k in range(len(t_meas) - 1):
-#
-#         dRdt = dRdt_set[k]
-#         dVrdt = dVrdt_set[k]
-#
-#         if (np.abs(dVrdt) > Thres_dVrdt) and (flag == 0):
-#             flag = 1
-#             t_ind_end_1part = k
-#
-#         if np.abs(dRdt) > Thres_dRdt:
-#             t_ind_start_2part = k + 1
-#
-#     if t_ind_end_1part == 0 or t_ind_start_2part == 0:
-#         for i in range(len(t_meas) - 1):
-#             if t_meas[i + 1] - t_meas[i] > 1:
-#                 t_ind_end = t_meas[i]
-#                 t_ind_start = t_meas[i + 1]
-#
-#                 t_ind_end_1part = list(t_meas).index(t_ind_end) + 1
-#                 t_ind_start_2part = list(t_meas).index(t_ind_start)
-#
-#     print(t_ind_end_1part, t_ind_start_2part)
-#
-#     return t_ind_end_1part, t_ind_start_2part
-
-# разбиение на участки для активно-реактивного снаряда - type_bullet = 6
+# partitioning to active-reactive  - type_bullet = 6
 def func_active_reactive(t_meas, R_meas, Vr_meas):
     Thres_dRdt = 3000
     Thres_dVrdt = 200
@@ -254,11 +220,10 @@ def func_active_reactive(t_meas, R_meas, Vr_meas):
                 t_ind_end_1part = list(t_meas).index(t_ind_end) + 1
                 t_ind_start_2part = list(t_meas).index(t_ind_start)
 
-    print(t_ind_end_1part, t_ind_start_2part)
 
     return t_ind_end_1part, t_ind_start_2part
 
-# линейная аппроксимация измерений
+# linear piece approximation of measurements
 def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
                           R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds):
     try:
@@ -311,7 +276,16 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
             NoW = NoW + 1
         NoW = int(NoW)
 
+        start_time = time.process_time()
+
         for w in range(NoW):
+
+            percent = float(w) / NoW
+            hashes = '#' * int(round(percent * 20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write("\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(percent * 100)),
+                                                                                (time.process_time() - start_time)))
+            sys.stdout.flush()
 
             if w == 0:
 
@@ -584,17 +558,22 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                         xhy_0_set.append(xhy_0)
                         x_est_top.append(x_est)
                         window_set.append(WindowSet[q])
-                        print(window_set[w], x_est_top[w], xhy_0_set[w], meas_t_ind[w])
                         break
 
+            percent = float(NoW) / NoW
+            hashes = '#' * int(round(percent * 20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write("\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(percent * 100)),
+                                                                                (time.process_time() - start_time)))
+            sys.stdout.flush()
+
         return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
+
     except IndexError:
-        print("Ошибка - расчет оценки траектории")
-        print('Ошибка:\n', traceback.format_exc())
-        ctypes.windll.user32.MessageBoxW(None, "Расчет оценки траектории", "Ошибка!", 0)
+        print("linear piece approximation of measurements error")
 
 
-# линейная аппроксимация измерений для начального участка
+# linear piece approximation start of measurements
 def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, x_est_start, t_meas_full,
                                 R_meas_full, Vr_meas_full, theta_meas_full, window_set, parameters_bounds):
     try:
@@ -823,23 +802,21 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
             dd_dd = np.dot(np.linalg.inv(dd), d)
             x_est = x_est - dd_dd
 
-        print(x_est)
-
         if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
             if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
                     (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
-                print(x_est)
+                x_est = x_est
+        else:
+            x_est = x_est_start
 
         return x_est
+
     except IndexError:
-        print("Ошибка - расчет оценки траектории")
-        print('Ошибка:\n', traceback.format_exc())
-        ctypes.windll.user32.MessageBoxW(None, "Расчет оценки траектории", "Ошибка!", 0)
+        print("linear piece approximation start of measurements error")
 
-
-# квадратичная аппроксимация
+#quad piece approximation start of measurements
 def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
                         R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds):
     try:
@@ -893,7 +870,16 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             NoW = NoW + 1
         NoW = int(NoW)
 
+        start_time = time.process_time()
+
         for w in range(NoW):
+
+            percent = float(w) / NoW
+            hashes = '#' * int(round(percent * 20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write("\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(percent * 100)),
+                                                                                (time.process_time() - start_time)))
+            sys.stdout.flush()
 
             if w == 0:
 
@@ -1178,16 +1164,21 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                         xhy_0_set.append(xhy_0)
                         x_est_top.append(x_est)
                         window_set.append(WindowSet[q])
-                        print(window_set[w], x_est_top[w], xhy_0_set[w], meas_t_ind[w])
                         break
+
+            percent = float(NoW) / NoW
+            hashes = '#' * int(round(percent * 20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write("\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(percent * 100)),
+                                                                                (time.process_time() - start_time)))
+            sys.stdout.flush()
+
         return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
+
     except IndexError:
-        print("Ошибка - расчет оценки траектории")
-        print('Ошибка:\n', traceback.format_exc())
-        ctypes.windll.user32.MessageBoxW(None, "Расчет оценки траектории", "Ошибка!", 0)
+        print("quad piece approximation of measurements error")
 
-
-# квадратичная аппроксимация для начального участка
+#quad piece approximation start of measurements
 def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, x_est_start, t_meas_full,
                               R_meas_full, Vr_meas_full, theta_meas_full, window_set, parameters_bounds):
     try:
@@ -1433,21 +1424,19 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
                     (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
-                print(x_est)
-
-        if np.isnan(x_est[0]):
+                    x_est = x_est
+        else:
             x_est = x_est_start
 
         return x_est
 
     except IndexError:
-        print("Ошибка - расчет оценки траектории")
-        print('Ошибка:\n', traceback.format_exc())
-        ctypes.windll.user32.MessageBoxW(None, "Расчет оценки траектории", "Ошибка!", 0)
+        print("quad piece approximation start of measurements")
 
 
-# оценка измерений для линейной аппроксимации
+#linear piece estimation of measurements
 def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, N, m, g, x_L, y_L, h_L):
+
     t_meas_plot = []
     x_tr_er_plot = []
     h_tr_er_plot = []
@@ -1462,6 +1451,7 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t
     A_abs_est_plot = []
     Ax_true_er_plot = []
     Ah_true_er_plot = []
+
 
     for s in range(len(x_est_top)):
 
@@ -1481,7 +1471,6 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t
             t = np.array(t)
 
         if (s > 0) and (s != (len(x_est_top) - 1)):
-            # чтобы учесть все значения взять по меньшему окну
             tmin = t_meas[meas_t_ind[s - 1][window_set[s - 1][1] - 1]]
             tmax = t_meas[meas_t_ind[s][window_set[s][1] - 1]]
             t = []
@@ -1495,7 +1484,6 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t
             t = np.array(t)
 
         if s == 0:
-            # чтобы учесть все значения взять по меньшему окну
             tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
             tmax = t_meas[meas_t_ind[s][window_set[s][1] - 1]]
             t = []
@@ -1599,13 +1587,14 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t
         Ax_true_er_plot.append(Ax_true_er)
         Ah_true_er_plot.append(Ah_true_er)
 
+
     return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
            Ah_true_er_plot
 
-
-# оценка измерений для квадратичной аппроксимации
+#quad piece estimation of measurements
 def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, N, m, g, x_L, y_L, h_L):
+
     t_meas_plot = []
     x_tr_er_plot = []
     h_tr_er_plot = []
@@ -1620,6 +1609,8 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
     A_abs_est_plot = []
     Ax_true_er_plot = []
     Ah_true_er_plot = []
+
+    start_time = time.process_time()
 
     for s in range(len(x_est_top)):
         x_est_fin = x_est_top[s]
@@ -1638,7 +1629,6 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
             t = np.array(t)
 
         if (s > 0) and (s != (len(x_est_top) - 1)):
-            # чтобы учесть все значения взять по меньшему окну
             tmin = t_meas[meas_t_ind[s - 1][window_set[s - 1][1] - 1]]
             tmax = t_meas[meas_t_ind[s][window_set[s][1] - 1]]
             t = []
@@ -1771,12 +1761,13 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
         Ax_true_er_plot.append(Ax_true_er)
         Ah_true_er_plot.append(Ah_true_er)
 
+
     return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
            Ah_true_er_plot
 
 
-# начальный участок траектории - оценка нулевой скорости
+#inital trajectory section assessment - inital start speed
 def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas):
     N = 1000
 
@@ -1804,7 +1795,6 @@ def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_m
             n += (tmax - tmin) / (N - 1)
         t.append(n)
 
-    # сортируем время в обратную сторону
     t = sorted(t, reverse=True)
 
     mu_k = np.zeros(N)
@@ -1843,7 +1833,7 @@ def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_m
     return x_est
 
 
-# начальный участок для ускоренного снаряда
+#inital trajectory section assessment - inital start speed reactive
 def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
     N = 1000
 
@@ -1918,11 +1908,11 @@ def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
     return t, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
            V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start
 
-# конечный участок траектории
+# trajectory end
 def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_end, Vh_tr_end, V_abs_tr_end, Ax_tr_end,
                         Ah_tr_end, A_abs_tr_end, alpha_tr_end, t_meas, R_tr_end, Vr_tr_end, theta_tr_end, x_L, y_L, h_L,
                         hei):
-    # hei - высота щита для пуль - для других снарядов передается нулевая
+    # hei - bullet shield height
 
     N = 1000
     dR = 5
@@ -2019,7 +2009,8 @@ def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_e
            Vh_true_end[:last_k], V_abs_true_end[:last_k], alpha_true_end[:last_k], A_abs_true_end[:last_k], \
            Ax_true_end[:last_k], Ah_true_end[:last_k]
 
-# оцененные значения для линейной аппроксимации в момент измерений
+
+# linear piece estimation error
 def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas,
                                        theta_meas, m, g, x_L, y_L, h_L):
     t_err_plot = []
@@ -2037,7 +2028,6 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_
         x_est_fin = x_est_top[s]
 
         if s == (len(x_est_top) - 1):
-            # время измерений - tmin для значений
             t = t_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
             R_er = R_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
             Vr_er = Vr_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
@@ -2116,8 +2106,7 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_
 
     return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot
 
-
-# оцененные значения для квадратичной аппроксимации в момент измерений
+# quad piece estimation error
 def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas, theta_meas,
                                      m, g, x_L, y_L, h_L):
     t_err_plot = []
@@ -2135,7 +2124,6 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
         x_est_fin = x_est_top[s]
 
         if s == (len(x_est_top) - 1):
-            # время измерений - tmin для значений
             t = t_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
             R_er = R_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
             Vr_er = Vr_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
@@ -2222,8 +2210,7 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
 
     return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot
 
-
-# оценка измерений для линейной аппроксимации - для начального участка
+# linear piece estimation start
 def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
     x_0 = 0
     h_0 = 0
@@ -2318,8 +2305,7 @@ def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L)
            Vx_true_er, Vh_true_er, V_abs_est, alpha_tr_er, A_abs_est, Ax_true_er, \
            Ah_true_er
 
-
-# оценка измерений для квадратичной аппроксимации - для начального участка
+# quad piece estimation start
 def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
     x_0 = 0
     h_0 = 0
@@ -2434,11 +2420,9 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
 def func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot, R_est_err_plot, Vr_est_err_plot,
                         theta_est_err_plot,
                         sko_R_tz, sko_Vr_tz, sko_theta_tz):
-    # выводить std
+
     track_meas = {}
     meas = []
-
-    # валидные точки - 0, если не валидные 1 ( СКО больше ТЗ)
 
     R_true = []
     Vr_true = []
@@ -2479,18 +2463,10 @@ def func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot, R_est_
 
     track_meas["meas"] = meas
 
-    print(Nlen, 'число измерений без отсева')
-
-    print(len(R_true), 'число измерений дальности после отсева')
-
-    print(len(Vr_true), 'число измерений скорости после отсева')
-
-    print(len(theta_true), 'число измерений угла после отсева')
-
     return track_meas, SKO_R_true, SKO_V_true, SKO_theta_true
 
 
-# функция для определения коэффициентов - для промежутка активно-реактивного снаряда
+# determination coeff for the gap of an active-ractive bullet
 def func_lsm_linear(X, H):
     N = len(X)
     sum_X = sum(X)
@@ -2536,7 +2512,7 @@ def func_lsm_kubic(X, H):
 
     return out
 
-
+# active-reactive estimation trajectory
 def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, Vx_tr_er_1, Vh_tr_er_1, Ax_tr_er_1, Ah_tr_er_1,
                                     x_tr_er_2, h_tr_er_2, t_meas_2, Vx_tr_er_2, Vh_tr_er_2, Ax_tr_er_2, Ah_tr_er_2, N,
                                     x_L, y_L, h_L):
@@ -2637,13 +2613,13 @@ def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, Vx_tr_er_1, 
            Vh_tr_act_est, V_abs_tr_act_est, alpha_tr_act_est, A_abs_tr_act_est, Ax_tr_act_est, Ah_tr_act_est
 
 
-# деривация для снарядов
+# derivation for casings
 def func_derivation(K1, K2, x_fin, v0, alpha):
     z_deriv = (K1 + K2 * x_fin) * v0 ** 2 * np.sin(alpha) ** 2
     return z_deriv
 
 
-# функция деривации для пуль
+# derivation for bullet
 def func_derivation_bullet(m, d, l, eta, K_inch, K_gran, K_fut, v0, t_pol):
     eta = eta / d
     l_cal = l / d
@@ -2655,21 +2631,18 @@ def func_derivation_bullet(m, d, l, eta, K_inch, K_gran, K_fut, v0, t_pol):
     return z_deriv_corr
 
 
-# функция для учета ветра
+# wind accounting
 def func_wind(t_fin, x_fin, v0, alpha, wind_module, wind_direction, az):
     Aw = np.deg2rad(az) - (np.deg2rad(wind_direction) + np.pi)
     Wz = wind_module * np.sin(Aw)
     z_wind = Wz * (t_fin - x_fin / (v0 / np.cos(alpha)))
     return z_wind
 
-
-# функция для перевода точки падения в координаты
-def func_tochka_fall(z, x_fin, can_B, can_L, az):
+# forwarding the drop point
+def func_point_fall(z, x_fin, can_B, can_L, az):
     x_fall = x_fin
     z_fall = z
     x_sp_gk, y_sp_gk = BLH2XY_GK(can_B, can_L)
-    print(x_sp_gk, y_sp_gk, 'зоны падения sp_gk')
-    print(int(x_sp_gk / 10e5), int(y_sp_gk / 10e5), 'зоны')
     RM = np.array([[np.cos(az), np.sin(az)], [-np.sin(az), np.cos(az)]])
     deltaXY_gk = RM.dot(np.array([[z_fall], [x_fall]]))
     x_fall_gk = x_sp_gk - 10e5 * int(x_sp_gk / 10e5) + deltaXY_gk[1]
@@ -2678,7 +2651,6 @@ def func_tochka_fall(z, x_fin, can_B, can_L, az):
     return x_fall_gk, z_fall_gk
 
 
-# перевод координат
 def BLH2XY_GK(B, L):
     B_rad = np.deg2rad(B)
     n = np.fix((6 + L) / 6)

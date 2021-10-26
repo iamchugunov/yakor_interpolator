@@ -60,4 +60,4 @@ while True:
 
             else:
 
-                print("nan")
+                print("Error")
