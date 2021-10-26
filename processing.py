@@ -2,6 +2,7 @@ import numpy as np
 import pymap3d as pm
 import ctypes
 import traceback
+import math
 
 from function import length_winlen, func_linear_piece_app, func_linear_piece_estimation, \
     func_quad_piece_app, func_quad_piece_estimation, func_derivation, func_filter_data, func_active_reactive, \
@@ -85,13 +86,15 @@ def process_initial_data(mes, config):
         config.flag_return = 0
 
     except KeyError:
+        # исправить вывод ошибок, чтобы программа не вылетала
         config.ini_data_flag = 0
         print('Ошибка:\n', traceback.format_exc())
         ctypes.windll.user32.MessageBoxW(None, "Проверьте входные данные", "Ошибка!", 0)
 
 
 def process_measurements(data, config):
-    track_meas = 'nan'
+    #track_meas = 'nan'
+    track_meas = 0
 
     if config.ini_data_flag:
 
@@ -518,7 +521,7 @@ def process_measurements(data, config):
 
             try:
 
-                Cx = 0.535  # 0.295; 0.54
+                Cx = 0.535 # 0.295; 0.54
                 r = 0.122 / 2
 
                 # обрезка участка ускорения
@@ -875,7 +878,7 @@ def process_measurements(data, config):
 
             try:
 
-                Cx = 0.59
+                Cx = 0.45 #0.59
                 r = 0.152 / 2
 
                 K1 = 0.00324881940048771
@@ -937,7 +940,9 @@ def process_measurements(data, config):
 
                 x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set_1,
                                                     x_est_fin_1, t_meas_1)
+
                 print(x_est_start)
+
                 x_est_app_start = func_quad_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
                                                             config.can_Y,
                                                             config.m, g, config.SKO_R,

@@ -823,6 +823,8 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
             dd_dd = np.dot(np.linalg.inv(dd), d)
             x_est = x_est - dd_dd
 
+        print(x_est)
+
         if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
             if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
                     (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
@@ -1432,7 +1434,12 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
                 print(x_est)
+
+        if np.isnan(x_est[0]):
+            x_est = x_est_start
+
         return x_est
+
     except IndexError:
         print("Ошибка - расчет оценки траектории")
         print('Ошибка:\n', traceback.format_exc())
