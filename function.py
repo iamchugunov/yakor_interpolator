@@ -2,6 +2,7 @@ import numpy as np
 import ctypes
 import traceback
 from cmath import sqrt
+import math
 
 import time, sys
 
@@ -548,7 +549,8 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                         dd[3, 2] = dd[2, 3]
 
                     dd_dd = np.dot(np.linalg.inv(dd), d)
-                    x_est = x_est - dd_dd
+                    if np.isnan(dd_dd[0]) or np.isnan(dd_dd[1]) or np.isnan(dd_dd[2]) or np.isnan(dd_dd[3]):
+                        x_est = x_est - dd_dd
 
                 if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
                     if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
@@ -800,7 +802,8 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
                 dd[3, 2] = dd[2, 3]
 
             dd_dd = np.dot(np.linalg.inv(dd), d)
-            x_est = x_est - dd_dd
+            if np.isnan(dd_dd[0]) or np.isnan(dd_dd[1]) or np.isnan(dd_dd[2]) or np.isnan(dd_dd[3]):
+                x_est = x_est - dd_dd
 
         if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
             if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
@@ -928,6 +931,7 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                     x_est = x_est_init
                 else:
                     x_est = [k0, absV0, dR, np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))]
+                    x_est = x_est_top
 
                 for p in range(30):
 
@@ -1154,7 +1158,8 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                         dd[3, 2] = dd[2, 3]
 
                     dd_dd = np.dot(np.linalg.inv(dd), d)
-                    x_est = x_est - dd_dd
+                    if np.isnan(dd_dd[0]) or np.isnan(dd_dd[1]) or np.isnan(dd_dd[2]) or np.isnan(dd_dd[3]):
+                        x_est = x_est - dd_dd
 
                 if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
                     if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
@@ -1417,7 +1422,8 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
                 dd[3, 2] = dd[2, 3]
 
             dd_dd = np.dot(np.linalg.inv(dd), d)
-            x_est = x_est - dd_dd
+            if np.isnan(dd_dd[0]) or np.isnan(dd_dd[1]) or np.isnan(dd_dd[2]) or np.isnan(dd_dd[3]):
+                x_est = x_est - dd_dd
 
         if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
             if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
@@ -1914,7 +1920,7 @@ def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_e
                         hei):
     # hei - bullet shield height
 
-    N = 1000
+    N = 10000
     dR = 5
 
     V0 = V_abs_tr_end[-1][-1]
