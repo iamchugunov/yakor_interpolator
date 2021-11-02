@@ -114,11 +114,6 @@ def kalman_filter_theta(x_est_prev, D_x_prev, y_meas, T, ksi_theta, theta_n1):
 
     return x_est, D_x
 
-# добавить двойную фильтрацию взамен старой
-# может добавить что быстрее отрешивает
-# есть ли у нас запрос на скорость? того как именно мы всё делаем
-
-
 # speed and range kalman filtering
 def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
     F = np.array([[1, T], [0, 1]])
@@ -137,6 +132,38 @@ def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
     x_est = x_ext + K.dot(y_meas - H.dot(x_ext))
 
     return x_est, D_x
+
+# angular (theta) smoother filtering
+# def func_angle_smoother(theta_meas, t_meas):
+#     # Rauch-Thug-Striebel algorithm
+#     x_est_prev = np.array([theta_meas[0], 0.004])
+#     dx_est_prev = np.eye(2)
+#
+#     sigma_ksi = 4e-2
+#     D_ksi = sigma_ksi ** 2
+#     I = np.eye(2)
+#
+#     H = np.array([1,0])
+#     sigma_n = 5e-4
+#     Dn = sigma_n ** 2
+#
+#     dT = 0
+#     for i in range(len(theta_meas)):
+#         if i == 0:
+#             dT = 0.05
+#         else:
+#             dT = t_meas[i] - t_meas[i-1]
+#
+#         F = np.array([[1, dT], [0, 1]])
+#         G = np.array([[0, 0], [0, dT]])
+#
+#         x_ext = F.dot(x_est_prev)
+#         dx_ext = F.dot(dx_est_prev).dot(F.T)
+#         s = H.dot(dx_ext).dot(H.T) + Dn
+#         k = dx_ext.dot(H.T).dot(np.linalg.inv(s))
+#         x_est_prev = x_ext + k.dot(theta_meas[k] - H.dot(x_ext))
+#         dx_est_prev = (I - k.dot(H)).dot(dx_ext)
+
 
 # filtered measuring arrays
 def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_theta, theta_n1):
