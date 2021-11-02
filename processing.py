@@ -932,8 +932,6 @@ def process_measurements(data, config):
                 Vr_meas_1 = Vr_meas[:t_ind_end_1part]
                 theta_meas_1 = theta_meas[:t_ind_end_1part]
 
-                xx = func_angle_smoother(theta_meas_1,t_meas_1)
-
                 t_meas_2 = t_meas[t_ind_start_2part:]
                 R_meas_2 = R_meas[t_ind_start_2part:]
                 Vr_meas_2 = Vr_meas[t_ind_start_2part:]

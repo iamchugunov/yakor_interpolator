@@ -168,8 +168,8 @@ def func_angle_smoother(theta_meas, t_meas):
         x_ext = F.dot(x_est_prev)
         dx_ext = F.dot(dx_est_prev).dot(F.T)
         s = H.dot(dx_ext).dot(H.T) + Dn
-        k = dx_ext.dot(H.T).dot(np.linalg.inv(s))
-        x_est_prev = x_ext + k.dot(theta_meas[k] - H.dot(x_ext))
+        k = dx_ext.dot(H.T)*s**(-1)
+        x_est_prev = x_ext + k * (theta_meas[i] - H.dot(x_ext))
         dx_est_prev = (I - k.dot(H)).dot(dx_ext)
         x_est_stor.append(x_est_prev)
         dx_est_stor.append(dx_est_prev)
@@ -182,7 +182,7 @@ def func_angle_smoother(theta_meas, t_meas):
     x_est_sm_stor.append(x_est_sm_prev)
     dx_est_sm_prev = dx_est_stor[-1]
 
-    for i in range(len(x_est_stor)-1):
+    for i in range(2, len(x_est_stor)-1):
 
         F = np.array([[1, dT_stor[len(x_est_stor)-(i-1)]], [0, 1]])
 
@@ -193,10 +193,7 @@ def func_angle_smoother(theta_meas, t_meas):
         x_est_sm_prev = x_est_sm
         dx_est_sm_prev = dx_est_sm
 
-    x_est_sm_stor = x_est_sm_stor.reverse()
-
-    return x_est_sm_stor
-
+    return x_est_sm_stor[::-1]
 
 
 # filtered measuring arrays
