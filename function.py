@@ -133,36 +133,70 @@ def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
 
     return x_est, D_x
 
-# angular (theta) smoother filtering
-# def func_angle_smoother(theta_meas, t_meas):
-#     # Rauch-Thug-Striebel algorithm
-#     x_est_prev = np.array([theta_meas[0], 0.004])
-#     dx_est_prev = np.eye(2)
-#
-#     sigma_ksi = 4e-2
-#     D_ksi = sigma_ksi ** 2
-#     I = np.eye(2)
-#
-#     H = np.array([1,0])
-#     sigma_n = 5e-4
-#     Dn = sigma_n ** 2
-#
-#     dT = 0
-#     for i in range(len(theta_meas)):
-#         if i == 0:
-#             dT = 0.05
-#         else:
-#             dT = t_meas[i] - t_meas[i-1]
-#
-#         F = np.array([[1, dT], [0, 1]])
-#         G = np.array([[0, 0], [0, dT]])
-#
-#         x_ext = F.dot(x_est_prev)
-#         dx_ext = F.dot(dx_est_prev).dot(F.T)
-#         s = H.dot(dx_ext).dot(H.T) + Dn
-#         k = dx_ext.dot(H.T).dot(np.linalg.inv(s))
-#         x_est_prev = x_ext + k.dot(theta_meas[k] - H.dot(x_ext))
-#         dx_est_prev = (I - k.dot(H)).dot(dx_ext)
+#angular (theta) smoother filtering
+def func_angle_smoother(theta_meas, t_meas):
+    # Rauch-Thug-Striebel algorithm
+
+    x_est_prev = np.array([theta_meas[0], 0.004])
+    dx_est_prev = np.eye(2)
+
+    x_est_stor = []
+    x_ext_stor = []
+
+    dx_est_stor = []
+    dx_ext_stor = []
+    dT_stor = []
+
+    sigma_ksi = 4e-2
+    d_ksi = sigma_ksi ** 2
+    I = np.eye(2)
+
+    H = np.array([1,0])
+    sigma_n = 5e-4
+    Dn = sigma_n ** 2
+
+    dT = 0
+    for i in range(len(theta_meas)):
+        if i == 0:
+            dT = 0.05
+        else:
+            dT = t_meas[i] - t_meas[i-1]
+
+        F = np.array([[1, dT], [0, 1]])
+        G = np.array([[0, 0], [0, dT]])
+
+        x_ext = F.dot(x_est_prev)
+        dx_ext = F.dot(dx_est_prev).dot(F.T)
+        s = H.dot(dx_ext).dot(H.T) + Dn
+        k = dx_ext.dot(H.T).dot(np.linalg.inv(s))
+        x_est_prev = x_ext + k.dot(theta_meas[k] - H.dot(x_ext))
+        dx_est_prev = (I - k.dot(H)).dot(dx_ext)
+        x_est_stor.append(x_est_prev)
+        dx_est_stor.append(dx_est_prev)
+        x_ext_stor.append(x_ext)
+        dx_ext_stor.append(dx_ext)
+        dT_stor.append(dT)
+
+    x_est_sm_prev = x_est_stor[-1]
+    x_est_sm_stor = []
+    x_est_sm_stor.append(x_est_sm_prev)
+    dx_est_sm_prev = dx_est_stor[-1]
+
+    for i in range(len(x_est_stor)-1):
+
+        F = np.array([[1, dT_stor[len(x_est_stor)-(i-1)]], [0, 1]])
+
+        K_sm = dx_est_stor[len(x_est_stor)-i].dot(F.T).dot(np.linalg.inv(dx_ext_stor[len(x_est_stor)-(i-1)]))
+        x_est_sm = x_est_stor[len(x_est_stor)-i] + K_sm.dot((x_est_sm_prev - x_ext_stor[len(x_est_stor)-(i-1)]))
+        dx_est_sm = dx_est_stor[len(x_est_stor)-i] + K_sm.dot(dx_est_sm_prev - dx_ext_stor[len(x_est_stor)-(i-1)]).dot(K_sm.T)
+        x_est_sm_stor.append(x_est_sm)
+        x_est_sm_prev = x_est_sm
+        dx_est_sm_prev = dx_est_sm
+
+    x_est_sm_stor = x_est_sm_stor.reverse()
+
+    return x_est_sm_stor
+
 
 
 # filtered measuring arrays

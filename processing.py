@@ -11,7 +11,7 @@ from function import length_winlen, func_linear_piece_app, func_linear_piece_est
     func_quad_piece_estimation_error, func_std_error_meas, sampling_points, \
     func_trajectory_start, func_quad_piece_estimation_start, func_trajectory_end, \
     func_linear_piece_estimation_start, func_linear_piece_app_start, func_quad_piece_app_start, \
-    func_active_reactive_trajectory, func_emissions_theta, func_trajectory_start_react
+    func_active_reactive_trajectory, func_emissions_theta, func_trajectory_start_react, func_angle_smoother
 
 
 def process_initial_data(mes, config):
@@ -931,6 +931,8 @@ def process_measurements(data, config):
                 R_meas_1 = R_meas[:t_ind_end_1part]
                 Vr_meas_1 = Vr_meas[:t_ind_end_1part]
                 theta_meas_1 = theta_meas[:t_ind_end_1part]
+
+                xx = func_angle_smoother(theta_meas_1,t_meas_1)
 
                 t_meas_2 = t_meas[t_ind_start_2part:]
                 R_meas_2 = R_meas[t_ind_start_2part:]
