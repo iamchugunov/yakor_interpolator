@@ -46,19 +46,37 @@ while True:
         data = json.loads((data.decode()))
 
         if rcv_type == 0x150001:
+            # transfer or inital data
             pr.process_initial_data(data, config)
+
         if rcv_type == 0x150002:
-
+            # transfer of measurements
             if config.ini_data_flag:
+                # the input data correct
 
-                points = data["points"]
-                pr.process_measurements(data, config)
+                pr.process_measurements(data, config, client)
+                if config.ini_meas_flag:
 
+                    if config.data_points:
+                        data2send = json.dumps(config.track).encode()
+                        client.sendall(len(data2send).to_bytes(4, "little"))
+                        client.sendall((0x150003).to_bytes(4, "little"))
+                        client.sendall(data2send)
+                    else:
+                        data2send = json.dumps(config.track).encode()
+                        client.sendall(len(data2send).to_bytes(4, "little"))
+                        client.sendall((0x150004).to_bytes(4, "little"))
+                        client.sendall(data2send)
+                        print("Error")
+                else:
+                    data2send = json.dumps(config.track).encode()
+                    client.sendall(len(data2send).to_bytes(4, "little"))
+                    client.sendall((0x150004).to_bytes(4, "little"))
+                    client.sendall(data2send)
+                    print("Error")
+            else:
                 data2send = json.dumps(config.track).encode()
                 client.sendall(len(data2send).to_bytes(4, "little"))
-                client.sendall((0x150003).to_bytes(4, "little"))
+                client.sendall((0x150004).to_bytes(4, "little"))
                 client.sendall(data2send)
-
-            else:
-
                 print("Error")

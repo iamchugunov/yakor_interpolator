@@ -11,7 +11,8 @@ from function import length_winlen, func_linear_piece_app, func_linear_piece_est
     func_quad_piece_estimation_error, func_std_error_meas, sampling_points, \
     func_trajectory_start, func_quad_piece_estimation_start, func_trajectory_end, \
     func_linear_piece_estimation_start, func_linear_piece_app_start, func_quad_piece_app_start, \
-    func_active_reactive_trajectory, func_emissions_theta, func_trajectory_start_react, func_angle_smoother
+    func_active_reactive_trajectory, func_emissions_theta, func_trajectory_start_react, func_angle_smoother, \
+    func_coord_smoother
 
 
 def process_initial_data(mes, config):
@@ -82,14 +83,19 @@ def process_initial_data(mes, config):
 
         # flag = 1 - message
         config.ini_data_flag = 1
-
+        #flag = 0 - measurements
+        config.ini_meas_flag = 0
+        # flag = 0 - result
+        config.data_points = 0
         # flag = 0 - return
         config.flag_return = 0
 
     except KeyError:
 
-        # received message inital data with error
+        # received message ini data with error
         config.ini_data_flag = 0
+        config.ini_meas_flag = 0
+        config.data_points = 0
         config.flag_return = 1
 
         track_meas = {}
@@ -100,8 +106,7 @@ def process_initial_data(mes, config):
         config.track_meas = track_meas
 
 
-def process_measurements(data, config):
-
+def process_measurements(data, config, client):
     if config.ini_data_flag:
 
         start_time = time.process_time()
@@ -157,11 +162,11 @@ def process_measurements(data, config):
             # sampling frequency
             TD = (t_meas[1] - t_meas[0]) / 5
 
+
+            config.ini_meas_flag = 1
+
         except KeyError:
 
-            # received message inital data - true
-            # received message measurements with error
-            config.ini_data_flag = 1
             config.flag_return = 1
 
             track_meas = {}
@@ -343,11 +348,12 @@ def process_measurements(data, config):
                 print(sR, sVr, np.rad2deg(stheta), "значение СКО измеренное - из файла")
                 print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
+
+                config.data_points = 1
                 config.flag_return = 1
 
             except TypeError:
 
-                config.ini_data_flag = 1
                 config.flag_return = 1
 
                 track_meas = {}
@@ -447,7 +453,7 @@ def process_measurements(data, config):
                 z = z_wind
 
                 x_fall_gk, z_fall_gk = func_point_fall(z, x_true_fin[-1], config.can_B, config.can_L,
-                                                        config.az)
+                                                       config.az)
 
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
@@ -518,11 +524,11 @@ def process_measurements(data, config):
                 print(sR, sVr, np.rad2deg(stheta), "значение СКО измеренное - из файла")
                 print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
+                config.data_points = 1
                 config.flag_return = 1
 
             except TypeError:
 
-                config.ini_data_flag = 1
                 config.flag_return = 1
 
                 track_meas = {}
@@ -536,7 +542,7 @@ def process_measurements(data, config):
 
             try:
 
-                Cx = 0.535 # 0.295; 0.54
+                Cx = 0.535  # 0.295; 0.54
                 r = 0.122 / 2
 
                 dv_dt = np.zeros(len(Vr_meas) - 1)
@@ -632,7 +638,7 @@ def process_measurements(data, config):
                 z = z_wind
 
                 x_fall_gk, z_fall_gk = func_point_fall(z, x_true_fin[-1], config.can_B, config.can_L,
-                                                        config.az)
+                                                       config.az)
 
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
@@ -703,11 +709,11 @@ def process_measurements(data, config):
                 print(sR, sVr, np.rad2deg(stheta), "значение СКО измеренное - из файла")
                 print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
+                config.data_points = 1
                 config.flag_return = 1
 
             except TypeError:
 
-                config.ini_data_flag = 1
                 config.flag_return = 1
 
                 track_meas = {}
@@ -747,7 +753,6 @@ def process_measurements(data, config):
 
                 x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set,
                                                     x_est_fin, t_meas)
-
 
                 x_est_app_start = func_linear_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
                                                               config.can_Y,
@@ -813,7 +818,7 @@ def process_measurements(data, config):
                 z = z_wind + z_derivation
 
                 x_fall_gk, z_fall_gk = func_point_fall(z, x_true_fin[-1], config.can_B, config.can_L,
-                                                        config.az)
+                                                       config.az)
 
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
@@ -883,11 +888,11 @@ def process_measurements(data, config):
                 print(sR, sVr, np.rad2deg(stheta), "значение СКО измеренное - из файла")
                 print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
+                config.data_points = 1
                 config.flag_return = 1
 
             except TypeError:
 
-                config.ini_data_flag = 1
                 config.flag_return = 1
 
                 track_meas = {}
@@ -901,7 +906,7 @@ def process_measurements(data, config):
 
             try:
 
-                Cx = 0.39 #0.59
+                Cx = 0.39  # 0.59
                 r = 0.152 / 2
 
                 K1 = 0.00324881940048771
@@ -915,8 +920,6 @@ def process_measurements(data, config):
                 t_ind_end_1part, t_ind_start_2part = func_active_reactive(t_meas, R_meas, Vr_meas)
 
                 if t_ind_end_1part == 0 and t_ind_start_2part == 0:
-
-                    config.ini_data_flag = 1
                     config.flag_return = 1
 
                     track_meas = {}
@@ -978,7 +981,6 @@ def process_measurements(data, config):
                                                             R_meas_1_filter, Vr_meas_1_filter,
                                                             theta_meas_1_filter,
                                                             window_set_1, parameters_bounds_1)
-
 
                 t_meas_plot_1, x_tr_er_plot_1, h_tr_er_plot_1, R_est_full_plot_1, Vr_est_full_plot_1, \
                 theta_est_full_plot_1, Vx_true_er_plot_1, Vh_true_er_plot_1, V_abs_full_plot_1, alpha_tr_er_plot_1, \
@@ -1079,14 +1081,13 @@ def process_measurements(data, config):
 
                 z_derivation = func_derivation(K1, K2, x_true_fin[-1], config.v0, config.alpha)
 
-
                 z_wind = func_wind(t_fin[-1], x_true_fin[-1], config.v0, config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
 
                 z = z_wind + z_derivation
 
                 x_fall_gk, z_fall_gk = func_point_fall(z, x_true_fin[-1], config.can_B, config.can_L,
-                                                        config.az)
+                                                       config.az)
 
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
@@ -1178,11 +1179,11 @@ def process_measurements(data, config):
                 print(sR, sVr, np.rad2deg(stheta), "значение СКО измеренное - из файла")
                 print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
+                config.data_points = 1
                 config.flag_return = 1
 
             except TypeError:
 
-                config.ini_data_flag = 1
                 config.flag_return = 1
 
                 track_meas = {}
@@ -1236,7 +1237,6 @@ def process_measurements(data, config):
 
                 x_est_start = func_trajectory_start(Cx, r, rho_0, M, R, T, config.m, g, xhy_0_set,
                                                     x_est_fin, t_meas)
-
 
                 x_est_app_start = func_quad_piece_app_start(config.loc_X, config.loc_Y, config.loc_Z,
                                                             config.can_Y,
@@ -1302,7 +1302,7 @@ def process_measurements(data, config):
                 z = z_wind + z_derivation
 
                 x_fall_gk, z_fall_gk = func_point_fall(z, x_true_fin[-1], config.can_B, config.can_L,
-                                                        config.az)
+                                                       config.az)
 
                 Vb = x_true_fin[-1] * np.sin(3 * sko_theta_tz)
                 Vd = 3 * sko_R_tz
@@ -1367,11 +1367,11 @@ def process_measurements(data, config):
                 print(sR, sVr, np.rad2deg(stheta), "значение СКО измеренное - из файла")
                 print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
 
+                config.data_points = 1
                 config.flag_return = 1
 
             except TypeError:
 
-                config.ini_data_flag = 1
                 config.flag_return = 1
 
                 track_meas = {}
@@ -1381,16 +1381,15 @@ def process_measurements(data, config):
                 config.track = track_meas
                 config.track_meas = track_meas
 
-        if config.flag_return == 1:
-
-            hashes = '#' * int(round(20))
-            spaces = ' ' * (20 - len(hashes))
-            sys.stdout.write("\rCalculating %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(100)),
-                                                                                (time.process_time() - start_time)))
-            sys.stdout.flush()
-
-            config.track = track_meas
-            config.track_meas = track_meas
+        # if config.flag_return == 1:
+        #     hashes = '#' * int(round(20))
+        #     spaces = ' ' * (20 - len(hashes))
+        #     sys.stdout.write("\rCalculating %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(100)),
+        #                                                                       (time.process_time() - start_time)))
+        #     sys.stdout.flush()
+        #
+        #     config.track = track_meas
+        #     config.track_meas = track_meas
 
         flag = 1
 

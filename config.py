@@ -10,8 +10,12 @@ class Config():
         self.PORT = connect_params["PORT"]
         self.ADDR = (self.IP, self.PORT)
 
-        # пришли данные или нет
+        # ini data flag
         self.ini_data_flag = 0
+        # measurement flag
+        self.ini_meas_flag = 0
+        # data points
+        self.data_points = 0
 
         # inition data
 
@@ -101,9 +105,8 @@ class Config():
 
         # flag_return
         self.flag_return = 0
-        # иходная кодограмма
+
         self.track = []
-        # помеченные измерения на валидность
         self.track_meas = []
 
 

@@ -134,67 +134,131 @@ def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
     return x_est, D_x
 
 #angular (theta) smoother filtering
-# def func_angle_smoother(theta_meas, t_meas):
-#     # Rauch-Thug-Striebel algorithm
-#
-#     x_est_prev = np.array([theta_meas[0], 0.004])
-#     dx_est_prev = np.eye(2)
-#
-#     x_est_stor = []
-#     x_ext_stor = []
-#
-#     dx_est_stor = []
-#     dx_ext_stor = []
-#     dT_stor = []
-#
-#     sigma_ksi = 4e-2
-#     d_ksi = sigma_ksi ** 2
-#     I = np.eye(2)
-#
-#     H = np.array([1,0])
-#     sigma_n = 5e-4
-#     Dn = sigma_n ** 2
-#
-#     dT = 0
-#     for i in range(len(theta_meas)):
-#         if i == 0:
-#             dT = 0.05
-#         else:
-#             dT = t_meas[i] - t_meas[i-1]
-#
-#         F = np.array([[1, dT], [0, 1]])
-#         G = np.array([[0, 0], [0, dT]])
-#
-#         x_ext = F.dot(x_est_prev)
-#         dx_ext = F.dot(dx_est_prev).dot(F.T)
-#         s = H.dot(dx_ext).dot(H.T) + Dn
-#         k = dx_ext.dot(H.T)*s**(-1)
-#         x_est_prev = x_ext + k * (theta_meas[i] - H.dot(x_ext))
-#         dx_est_prev = (I - k.dot(H)).dot(dx_ext)
-#         x_est_stor.append(x_est_prev)
-#         dx_est_stor.append(dx_est_prev)
-#         x_ext_stor.append(x_ext)
-#         dx_ext_stor.append(dx_ext)
-#         dT_stor.append(dT)
-#
-#     x_est_sm_prev = x_est_stor[-1]
-#     x_est_sm_stor = []
-#     x_est_sm_stor.append(x_est_sm_prev)
-#     dx_est_sm_prev = dx_est_stor[-1]
-#
-#     for i in range(1, len(x_est_stor)):
-#
-#         F = np.array([[1, dT_stor[len(x_est_stor)-(i-1)]], [0, 1]])
-#
-#         K_sm = dx_est_stor[len(x_est_stor)-i].dot(F.T).dot(np.linalg.inv(dx_ext_stor[len(x_est_stor)-(i-1)]))
-#         x_est_sm = x_est_stor[len(x_est_stor)-i] + K_sm.dot((x_est_sm_prev - x_ext_stor[len(x_est_stor)-(i-1)]))
-#         dx_est_sm = dx_est_stor[len(x_est_stor)-i] + K_sm.dot(dx_est_sm_prev - dx_ext_stor[len(x_est_stor)-(i-1)]).dot(K_sm.T)
-#         x_est_sm_stor.append(x_est_sm)
-#         x_est_sm_prev = x_est_sm
-#         dx_est_sm_prev = dx_est_sm
-#
-#     return x_est_sm_stor[::-1]
+def func_angle_smoother(theta_meas, t_meas, delta):
+    # Rauch-Thug-Striebel algorithm
 
+    x_est_prev = np.array([theta_meas[0], delta])
+    dx_est_prev = np.eye(2)
+
+    x_est_stor = []
+    x_ext_stor = []
+
+    dx_est_stor = []
+    dx_ext_stor = []
+    dT_stor = []
+
+    sigma_ksi = 4e-2
+    d_ksi = sigma_ksi ** 2
+    I = np.eye(2)
+
+    H = np.array([1,0])
+    sigma_n = 5e-4
+    Dn = sigma_n ** 2
+
+    dT = 0
+
+    for i in range(len(t_meas)):
+        if i == 0:
+            dT = 0.05
+        else:
+            dT = t_meas[i] - t_meas[i-1]
+
+        F = np.array([[1, dT], [0, 1]])
+        G = np.array([[0, 0], [0, dT]])
+
+        x_ext = F.dot(x_est_prev)
+        dx_ext = F.dot(dx_est_prev).dot(F.T) + (G*d_ksi).dot(G.T)
+        s = H.dot(dx_ext).dot(H.T) + Dn
+        k = dx_ext.dot(H.T)*s**(-1)
+        x_est_prev = x_ext + k * (theta_meas[i] - H.dot(x_ext))
+        dx_est_prev = (I - k.dot(H)).dot(dx_ext)
+        x_est_stor.append(x_est_prev)
+        dx_est_stor.append(dx_est_prev)
+        x_ext_stor.append(x_ext)
+        dx_ext_stor.append(dx_ext)
+        dT_stor.append(dT)
+
+    x_est_sm_prev = x_est_stor[-1]
+    x_est_sm_stor = []
+    x_est_sm_stor.append(x_est_sm_prev)
+    dx_est_sm_prev = dx_est_stor[-1]
+
+    for i in range(len(x_est_stor)-1):
+
+        F = np.array([[1, dT_stor[len(x_est_stor)-i-1]], [0, 1]])
+
+        K_sm = dx_est_stor[len(x_est_stor)-i-2].dot(F.T).dot(np.linalg.inv(dx_ext_stor[len(x_est_stor)-i-1]))
+        x_est_sm = x_est_stor[len(x_est_stor)-i-2] + K_sm.dot((x_est_sm_prev - x_ext_stor[len(x_est_stor)-i-1]))
+        dx_est_sm = dx_est_stor[len(x_est_stor)-i-2] + K_sm.dot(dx_est_sm_prev - dx_ext_stor[len(x_est_stor)-i-1]).dot(K_sm.T)
+        x_est_sm_stor.append(x_est_sm)
+        x_est_sm_prev = x_est_sm
+        dx_est_sm_prev = dx_est_sm
+
+    return x_est_sm_stor[::-1]
+
+#coord (R, Vr) smoother filtering
+def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
+    # Rauch-Thug-Striebel algorithm
+
+    x_est_prev = np.array([R_meas[0], Vr_meas[0], delta])
+    dx_est_prev = np.eye(3)
+
+    x_est_stor = []
+    x_ext_stor = []
+
+    dx_est_stor = []
+    dx_ext_stor = []
+    dT_stor = []
+
+    sigma_ksi = 0.5e1
+    d_ksi = sigma_ksi ** 2
+    I = np.eye(3)
+
+    H = np.array([[1,0,0],[0,1,0]])
+    sigma_n1 = 0.1e1
+    sigma_n2 = 0.3e0
+    Dn = np.array([[sigma_n1**2, 0], [0, sigma_n2**2]])
+
+    dT = 0
+
+    for i in range(len(t_meas)):
+        if i == 0:
+            dT = 0.05
+        else:
+            dT = t_meas[i] - t_meas[i-1]
+
+        F = np.array([[1, dT, 0], [0, 1, dT], [0, 0, 1]])
+        G = np.array([[0, 0, 0], [0, 0, 0], [0, 0, dT]])
+
+        x_ext = F.dot(x_est_prev)
+        dx_ext = F.dot(dx_est_prev).dot(F.T) + G.dot(d_ksi).dot(G.T)
+        s = H.dot(dx_ext).dot(H.T) + Dn
+        k = dx_ext.dot(H.T).dot(np.linalg.inv(s))
+        x_est_prev = x_ext + k.dot(np.array([R_meas[i], Vr_meas[i]]) - H.dot(x_ext))
+        dx_est_prev = (I - k.dot(H)).dot(dx_ext)
+        x_est_stor.append(x_est_prev)
+        dx_est_stor.append(dx_est_prev)
+        x_ext_stor.append(x_ext)
+        dx_ext_stor.append(dx_ext)
+        dT_stor.append(dT)
+
+    x_est_sm_prev = x_est_stor[-1]
+    x_est_sm_stor = []
+    x_est_sm_stor.append(x_est_sm_prev)
+    dx_est_sm_prev = dx_est_stor[-1]
+
+    for i in range(len(x_est_stor)-1):
+
+        F = np.array([[1, dT_stor[len(x_est_stor)-i-1], 0], [0, 1, dT_stor[len(x_est_stor)-i-1]],[0, 0, 1]])
+
+        K_sm = dx_est_stor[len(x_est_stor)-i-2].dot(F.T).dot(np.linalg.inv(dx_ext_stor[len(x_est_stor)-i-1]))
+        x_est_sm = x_est_stor[len(x_est_stor)-i-2] + K_sm.dot((x_est_sm_prev - x_ext_stor[len(x_est_stor)-i-1]))
+        dx_est_sm = dx_est_stor[len(x_est_stor)-i-2] + K_sm.dot(dx_est_sm_prev - dx_ext_stor[len(x_est_stor)-i-1]).dot(K_sm.T)
+        x_est_sm_stor.append(x_est_sm)
+        x_est_sm_prev = x_est_sm
+        dx_est_sm_prev = dx_est_sm
+
+    return x_est_sm_stor[::-1]
 
 # filtered measuring arrays
 def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_theta, theta_n1):
@@ -607,7 +671,7 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                         dd[3, 2] = dd[2, 3]
 
                     dd_dd = np.dot(np.linalg.inv(dd), d)
-                    if np.isnan(dd_dd[0]) or np.isnan(dd_dd[1]) or np.isnan(dd_dd[2]) or np.isnan(dd_dd[3]):
+                    if np.isreal(dd_dd[0]) and np.isreal(dd_dd[1]) and np.isreal(dd_dd[2]) and np.isreal(dd_dd[3]):
                         x_est = x_est - dd_dd
 
                 if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
@@ -860,7 +924,7 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
                 dd[3, 2] = dd[2, 3]
 
             dd_dd = np.dot(np.linalg.inv(dd), d)
-            if np.isnan(dd_dd[0]) or np.isnan(dd_dd[1]) or np.isnan(dd_dd[2]) or np.isnan(dd_dd[3]):
+            if np.isreal(dd_dd[0]) and np.isreal(dd_dd[1]) and np.isreal(dd_dd[2]) and np.isreal(dd_dd[3]):
                 x_est = x_est - dd_dd
 
         if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
@@ -989,7 +1053,6 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                     x_est = x_est_init
                 else:
                     x_est = [k0, absV0, dR, np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))]
-                    x_est = x_est_top
 
                 for p in range(30):
 
@@ -1216,7 +1279,7 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                         dd[3, 2] = dd[2, 3]
 
                     dd_dd = np.dot(np.linalg.inv(dd), d)
-                    if np.isnan(dd_dd[0]) or np.isnan(dd_dd[1]) or np.isnan(dd_dd[2]) or np.isnan(dd_dd[3]):
+                    if np.isreal(dd_dd[0]) and np.isreal(dd_dd[1]) and np.isreal(dd_dd[2]) and np.isreal(dd_dd[3]):
                         x_est = x_est - dd_dd
 
                 if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
@@ -1480,7 +1543,7 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
                 dd[3, 2] = dd[2, 3]
 
             dd_dd = np.dot(np.linalg.inv(dd), d)
-            if np.isnan(dd_dd[0]) or np.isnan(dd_dd[1]) or np.isnan(dd_dd[2]) or np.isnan(dd_dd[3]):
+            if np.isreal(dd_dd[0]) and np.isreal(dd_dd[1]) and np.isreal(dd_dd[2]) and np.isreal(dd_dd[3]):
                 x_est = x_est - dd_dd
 
         if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
