@@ -54,7 +54,7 @@ while True:
             if config.ini_data_flag:
                 # the input data correct
 
-                pr.process_measurements(data, config, client)
+                pr.process_measurements(data, config)
                 if config.ini_meas_flag:
 
                     if config.data_points:
@@ -62,6 +62,7 @@ while True:
                         client.sendall(len(data2send).to_bytes(4, "little"))
                         client.sendall((0x150003).to_bytes(4, "little"))
                         client.sendall(data2send)
+
                     else:
                         data2send = json.dumps(config.track).encode()
                         client.sendall(len(data2send).to_bytes(4, "little"))

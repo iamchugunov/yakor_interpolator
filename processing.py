@@ -75,11 +75,8 @@ def process_initial_data(mes, config):
         config.angle_bounds = bullet["angle_bounds"]
         # config - rad
 
-        config.ksi_Vr = bullet["ksi_Vr"]
-        config.n1 = bullet["n1"]
-        config.n2 = bullet["n2"]
-        config.ksi_theta = bullet["ksi_theta"]
-        config.theta_n1 = bullet["theta_n1"]
+        config.sigma_theta = bullet["sigma_theta"]
+        config.sigma_RVr = bullet["sigma_RVr"]
 
         # flag = 1 - message
         config.ini_data_flag = 1
@@ -106,7 +103,7 @@ def process_initial_data(mes, config):
         config.track_meas = track_meas
 
 
-def process_measurements(data, config, client):
+def process_measurements(data, config):
     # добавить время
     if config.ini_data_flag:
 
@@ -163,7 +160,6 @@ def process_measurements(data, config, client):
             # sampling frequency
             TD = (t_meas[1] - t_meas[0]) / 5
 
-
             config.ini_meas_flag = 1
 
         except KeyError:
@@ -197,13 +193,6 @@ def process_measurements(data, config, client):
                 # measurements filtering
                 theta_meas_filter = func_angle_smoother(theta_meas, t_meas, config.sigma_theta)
                 R_meas_filter,  Vr_meas_filter = func_coord_smoother(R_meas, Vr_meas, t_meas, config.sigma_RVr)
-
-                # R_meas_filter, Vr_meas_filter, theta_meas_filter = func_filter_data(t_meas, R_meas, Vr_meas,
-                #                                                                     theta_meas,
-                #                                                                     config.ksi_Vr,
-                #                                                                     config.n1, config.n2,
-                #                                                                     config.ksi_theta,
-                #                                                                     config.theta_n1)
 
                 xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
                 Vr_meas_tr, theta_meas_tr = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
@@ -378,12 +367,6 @@ def process_measurements(data, config, client):
 
                 theta_meas_filter = func_angle_smoother(theta_meas, t_meas, config.sigma_theta)
                 R_meas_filter,  Vr_meas_filter = func_coord_smoother(R_meas, Vr_meas, t_meas, config.sigma_RVr)
-
-                # R_meas_filter, Vr_meas_filter, theta_meas_filter = func_filter_data(t_meas, R_meas, Vr_meas, theta_meas,
-                #                                                                     config.ksi_Vr,
-                #                                                                     config.n1, config.n2,
-                #                                                                     config.ksi_theta,
-                #                                                                     config.theta_n1)
 
                 xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
                 Vr_meas_tr, theta_meas_tr = func_linear_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
@@ -577,13 +560,6 @@ def process_measurements(data, config, client):
                 theta_meas_filter = func_angle_smoother(theta_meas_start, t_meas_start, config.sigma_theta)
                 R_meas_filter,  Vr_meas_filter = func_coord_smoother(R_meas_start, Vr_meas_start, t_meas_start, config.sigma_RVr)
 
-                # R_meas_filter, Vr_meas_filter, theta_meas_filter = func_filter_data(t_meas_start, R_meas_start,
-                #                                                                     Vr_meas_start, theta_meas_start,
-                #                                                                     config.ksi_Vr,
-                #                                                                     config.n1, config.n2,
-                #                                                                     config.ksi_theta,
-                #                                                                     config.theta_n1)
-
                 xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
                 Vr_meas_tr, theta_meas_tr = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
                                                                 config.can_Y,
@@ -747,12 +723,6 @@ def process_measurements(data, config, client):
 
                 theta_meas_filter = func_angle_smoother(theta_meas, t_meas, config.sigma_theta)
                 R_meas_filter,  Vr_meas_filter = func_coord_smoother(R_meas, Vr_meas, t_meas, config.sigma_RVr)
-
-                # R_meas_filter, Vr_meas_filter, theta_meas_filter = func_filter_data(t_meas, R_meas, Vr_meas, theta_meas,
-                #                                                                     config.ksi_Vr,
-                #                                                                     config.n1, config.n2,
-                #                                                                     config.ksi_theta,
-                #                                                                     config.theta_n1)
 
                 xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
                 Vr_meas_tr, theta_meas_tr = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
@@ -965,20 +935,6 @@ def process_measurements(data, config, client):
                 theta_meas_2_filter = func_angle_smoother(theta_meas_2, t_meas_2, config.sigma_theta)
                 R_meas_2_filter,  Vr_meas_2_filter = func_coord_smoother(R_meas_2, Vr_meas_2, t_meas_2, config.sigma_RVr)
 
-                # R_meas_1_filter, Vr_meas_1_filter, theta_meas_1_filter = func_filter_data(t_meas_1, R_meas_1, Vr_meas_1,
-                #                                                                           theta_meas_1,
-                #                                                                           config.ksi_Vr,
-                #                                                                           config.n1, config.n2,
-                #                                                                           config.ksi_theta,
-                #                                                                           config.theta_n1)
-                #
-                # R_meas_2_filter, Vr_meas_2_filter, theta_meas_2_filter = func_filter_data(t_meas_2, R_meas_2, Vr_meas_2,
-                #                                                                           theta_meas_2,
-                #                                                                           config.ksi_Vr,
-                #                                                                           config.n1, config.n2,
-                #                                                                           config.ksi_theta,
-                #                                                                           config.theta_n1)
-
                 xhy_0_set_1, x_est_fin_1, meas_t_ind_1, window_set_1, t_meas_tr_1, R_meas_tr_1, \
                 Vr_meas_tr_1, theta_meas_tr_1 = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
                                                                     config.can_Y,
@@ -1010,7 +966,9 @@ def process_measurements(data, config, client):
                 t_start, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
                 V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start = func_quad_piece_estimation_start(
                     x_est_app_start, t_meas_plot_1, config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+
                 print('')
+
                 xhy_0_set_2, x_est_fin_2, meas_t_ind_2, window_set_2, t_meas_tr_2, R_meas_tr_2, \
                 Vr_meas_tr_2, theta_meas_tr_2 = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
                                                                     config.can_Y,
@@ -1240,11 +1198,6 @@ def process_measurements(data, config, client):
                 theta_meas_filter = func_angle_smoother(theta_meas, t_meas, config.sigma_theta)
                 R_meas_filter,  Vr_meas_filter = func_coord_smoother(R_meas, Vr_meas, t_meas, config.sigma_RVr)
 
-                # R_meas_filter, Vr_meas_filter, theta_meas_filter = func_filter_data(t_meas, R_meas, Vr_meas, theta_meas,
-                #                                                                     config.ksi_Vr,
-                #                                                                     config.n1, config.n2,
-                #                                                                     config.ksi_theta,
-                #                                                                     config.theta_n1)
 
                 xhy_0_set, x_est_fin, meas_t_ind, window_set, t_meas_tr, R_meas_tr, \
                 Vr_meas_tr, theta_meas_tr = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
@@ -1403,6 +1356,7 @@ def process_measurements(data, config, client):
                 config.track_meas = track_meas
 
         if config.data_points == 1:
+
             hashes = '#' * int(round(20))
             spaces = ' ' * (20 - len(hashes))
             sys.stdout.write("\rCalculating %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(100)),

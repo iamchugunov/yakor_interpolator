@@ -66,6 +66,7 @@ import warnings
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+
 # windowlen to cut the trajectory section
 def length_winlen(Ndlen):
     winlen = 0
@@ -114,6 +115,7 @@ def kalman_filter_theta(x_est_prev, D_x_prev, y_meas, T, ksi_theta, theta_n1):
 
     return x_est, D_x
 
+
 # speed and range kalman filtering
 def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
     F = np.array([[1, T], [0, 1]])
@@ -133,7 +135,8 @@ def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
 
     return x_est, D_x
 
-#angular (theta) smoother filtering
+
+# angular (theta) smoother filtering
 def func_angle_smoother(theta_meas, t_meas, delta):
     # Rauch-Thug-Striebel algorithm
 
@@ -151,7 +154,7 @@ def func_angle_smoother(theta_meas, t_meas, delta):
     d_ksi = sigma_ksi ** 2
     I = np.eye(2)
 
-    H = np.array([1,0])
+    H = np.array([1, 0])
     sigma_n = 5e-4
     Dn = sigma_n ** 2
 
@@ -161,15 +164,15 @@ def func_angle_smoother(theta_meas, t_meas, delta):
         if i == 0:
             dT = 0.05
         else:
-            dT = t_meas[i] - t_meas[i-1]
+            dT = t_meas[i] - t_meas[i - 1]
 
         F = np.array([[1, dT], [0, 1]])
         G = np.array([[0, 0], [0, dT]])
 
         x_ext = F.dot(x_est_prev)
-        dx_ext = F.dot(dx_est_prev).dot(F.T) + (G*d_ksi).dot(G.T)
+        dx_ext = F.dot(dx_est_prev).dot(F.T) + (G * d_ksi).dot(G.T)
         s = H.dot(dx_ext).dot(H.T) + Dn
-        k = dx_ext.dot(H.T)*s**(-1)
+        k = dx_ext.dot(H.T) * s ** (-1)
         x_est_prev = x_ext + k * (theta_meas[i] - H.dot(x_ext))
         dx_est_prev = (I - k.dot(H)).dot(dx_ext)
         x_est_stor.append(x_est_prev)
@@ -186,22 +189,23 @@ def func_angle_smoother(theta_meas, t_meas, delta):
     theta_filt = np.zeros(len(x_est_stor))
     theta_filt[0] = x_est_sm_prev[0]
 
-    for i in range(len(x_est_stor)-1):
+    for i in range(len(x_est_stor) - 1):
+        F = np.array([[1, dT_stor[len(x_est_stor) - i - 1]], [0, 1]])
 
-        F = np.array([[1, dT_stor[len(x_est_stor)-i-1]], [0, 1]])
-
-        K_sm = dx_est_stor[len(x_est_stor)-i-2].dot(F.T).dot(np.linalg.inv(dx_ext_stor[len(x_est_stor)-i-1]))
-        x_est_sm = x_est_stor[len(x_est_stor)-i-2] + K_sm.dot((x_est_sm_prev - x_ext_stor[len(x_est_stor)-i-1]))
-        dx_est_sm = dx_est_stor[len(x_est_stor)-i-2] + K_sm.dot(dx_est_sm_prev - dx_ext_stor[len(x_est_stor)-i-1]).dot(K_sm.T)
+        K_sm = dx_est_stor[len(x_est_stor) - i - 2].dot(F.T).dot(np.linalg.inv(dx_ext_stor[len(x_est_stor) - i - 1]))
+        x_est_sm = x_est_stor[len(x_est_stor) - i - 2] + K_sm.dot((x_est_sm_prev - x_ext_stor[len(x_est_stor) - i - 1]))
+        dx_est_sm = dx_est_stor[len(x_est_stor) - i - 2] + K_sm.dot(
+            dx_est_sm_prev - dx_ext_stor[len(x_est_stor) - i - 1]).dot(K_sm.T)
         x_est_sm_stor.append(x_est_sm)
         x_est_sm_prev = x_est_sm
         dx_est_sm_prev = dx_est_sm
 
-        theta_filt[i+1] = x_est_sm[0]
+        theta_filt[i + 1] = x_est_sm[0]
 
     return theta_filt[::-1]
 
-#coord (R, Vr) smoother filtering
+
+# coord (R, Vr) smoother filtering
 def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
     # Rauch-Thug-Striebel algorithm
 
@@ -219,10 +223,10 @@ def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
     d_ksi = sigma_ksi ** 2
     I = np.eye(3)
 
-    H = np.array([[1,0,0],[0,1,0]])
+    H = np.array([[1, 0, 0], [0, 1, 0]])
     sigma_n1 = 0.1e1
     sigma_n2 = 0.3e0
-    Dn = np.array([[sigma_n1**2, 0], [0, sigma_n2**2]])
+    Dn = np.array([[sigma_n1 ** 2, 0], [0, sigma_n2 ** 2]])
 
     dT = 0
 
@@ -230,7 +234,7 @@ def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
         if i == 0:
             dT = 0.05
         else:
-            dT = t_meas[i] - t_meas[i-1]
+            dT = t_meas[i] - t_meas[i - 1]
 
         F = np.array([[1, dT, 0], [0, 1, dT], [0, 0, 1]])
         G = np.array([[0, 0, 0], [0, 0, 0], [0, 0, dT]])
@@ -258,21 +262,22 @@ def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
     R_filt[0] = x_est_sm_prev[0]
     Vr_filt[0] = x_est_sm_prev[1]
 
-    for i in range(len(x_est_stor)-1):
+    for i in range(len(x_est_stor) - 1):
+        F = np.array([[1, dT_stor[len(x_est_stor) - i - 1], 0], [0, 1, dT_stor[len(x_est_stor) - i - 1]], [0, 0, 1]])
 
-        F = np.array([[1, dT_stor[len(x_est_stor)-i-1], 0], [0, 1, dT_stor[len(x_est_stor)-i-1]],[0, 0, 1]])
-
-        K_sm = dx_est_stor[len(x_est_stor)-i-2].dot(F.T).dot(np.linalg.inv(dx_ext_stor[len(x_est_stor)-i-1]))
-        x_est_sm = x_est_stor[len(x_est_stor)-i-2] + K_sm.dot((x_est_sm_prev - x_ext_stor[len(x_est_stor)-i-1]))
-        dx_est_sm = dx_est_stor[len(x_est_stor)-i-2] + K_sm.dot(dx_est_sm_prev - dx_ext_stor[len(x_est_stor)-i-1]).dot(K_sm.T)
+        K_sm = dx_est_stor[len(x_est_stor) - i - 2].dot(F.T).dot(np.linalg.inv(dx_ext_stor[len(x_est_stor) - i - 1]))
+        x_est_sm = x_est_stor[len(x_est_stor) - i - 2] + K_sm.dot((x_est_sm_prev - x_ext_stor[len(x_est_stor) - i - 1]))
+        dx_est_sm = dx_est_stor[len(x_est_stor) - i - 2] + K_sm.dot(
+            dx_est_sm_prev - dx_ext_stor[len(x_est_stor) - i - 1]).dot(K_sm.T)
         x_est_sm_stor.append(x_est_sm)
         x_est_sm_prev = x_est_sm
         dx_est_sm_prev = dx_est_sm
 
-        R_filt[i+1] = x_est_sm[0]
-        Vr_filt[i+1] = x_est_sm[1]
+        R_filt[i + 1] = x_est_sm[0]
+        Vr_filt[i + 1] = x_est_sm[1]
 
     return R_filt[::-1], Vr_filt[::-1]
+
 
 # filtered measuring arrays
 def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_theta, theta_n1):
@@ -357,8 +362,8 @@ def func_active_reactive(t_meas, R_meas, Vr_meas):
                 t_ind_end_1part = list(t_meas).index(t_ind_end) + 1
                 t_ind_start_2part = list(t_meas).index(t_ind_start)
 
-
     return t_ind_end_1part, t_ind_start_2part
+
 
 # linear piece approximation of measurements
 def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
@@ -420,8 +425,12 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
             percent = float(w) / NoW
             hashes = '#' * int(round(percent * 20))
             spaces = ' ' * (20 - len(hashes))
-            sys.stdout.write("\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(percent * 100)),
-                                                                                (time.process_time() - start_time)))
+            sys.stdout.write(
+                "\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                                int(round(
+                                                                                                    percent * 100)),
+                                                                                                (
+                                                                                                            time.process_time() - start_time)))
             sys.stdout.flush()
 
             if w == 0:
@@ -685,10 +694,12 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                         dd[3, 2] = dd[2, 3]
 
                     dd_dd = np.dot(np.linalg.inv(dd), d)
-                    if np.isreal(dd_dd[0]) and np.isreal(dd_dd[1]) and np.isreal(dd_dd[2]) and np.isreal(dd_dd[3]):
+                    if not (math.isnan(dd_dd[0]) and math.isnan(dd_dd[1]) and math.isnan(dd_dd[2]) and math.isnan(
+                            dd_dd[3])):
                         x_est = x_est - dd_dd
 
-                if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
+                if not (math.isnan(x_est[0]) and math.isnan(x_est[1]) and math.isnan(x_est[2]) and math.isnan(
+                        x_est[3])):
                     if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
                             (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
                             (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
@@ -701,9 +712,14 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
             percent = float(NoW) / NoW
             hashes = '#' * int(round(percent * 20))
             spaces = ' ' * (20 - len(hashes))
-            sys.stdout.write("\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(percent * 100)),
-                                                                                (time.process_time() - start_time)))
+            sys.stdout.write(
+                "\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                                int(round(
+                                                                                                    percent * 100)),
+                                                                                                (
+                                                                                                            time.process_time() - start_time)))
             sys.stdout.flush()
+
 
         return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
 
@@ -938,10 +954,10 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
                 dd[3, 2] = dd[2, 3]
 
             dd_dd = np.dot(np.linalg.inv(dd), d)
-            if np.isreal(dd_dd[0]) and np.isreal(dd_dd[1]) and np.isreal(dd_dd[2]) and np.isreal(dd_dd[3]):
+            if not (math.isnan(dd_dd[0]) and math.isnan(dd_dd[1]) and math.isnan(dd_dd[2]) and math.isnan(dd_dd[3])):
                 x_est = x_est - dd_dd
 
-        if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
+        if not (math.isnan(x_est[0]) and math.isnan(x_est[1]) and math.isnan(x_est[2]) and math.isnan(x_est[3])):
             if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
                     (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
@@ -955,7 +971,8 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
     except IndexError:
         print("linear piece approximation start of measurements error")
 
-#quad piece approximation start of measurements
+
+# quad piece approximation start of measurements
 def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
                         R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds):
     try:
@@ -1016,8 +1033,11 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             percent = float(w) / NoW
             hashes = '#' * int(round(percent * 20))
             spaces = ' ' * (20 - len(hashes))
-            sys.stdout.write("\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(percent * 100)),
-                                                                                (time.process_time() - start_time)))
+            sys.stdout.write(
+                "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                              int(round(percent * 100)),
+                                                                                              (
+                                                                                                          time.process_time() - start_time)))
             sys.stdout.flush()
 
             if w == 0:
@@ -1293,10 +1313,12 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                         dd[3, 2] = dd[2, 3]
 
                     dd_dd = np.dot(np.linalg.inv(dd), d)
-                    if np.isreal(dd_dd[0]) and np.isreal(dd_dd[1]) and np.isreal(dd_dd[2]) and np.isreal(dd_dd[3]):
+                    if not (math.isnan(dd_dd[0]) and math.isnan(dd_dd[1]) and math.isnan(dd_dd[2]) and math.isnan(
+                            dd_dd[3])):
                         x_est = x_est - dd_dd
 
-                if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
+                if not (math.isnan(x_est[0]) and math.isnan(x_est[1]) and math.isnan(x_est[2]) and math.isnan(
+                        x_est[3])):
                     if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
                             (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
                             (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
@@ -1309,8 +1331,11 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             percent = float(NoW) / NoW
             hashes = '#' * int(round(percent * 20))
             spaces = ' ' * (20 - len(hashes))
-            sys.stdout.write("\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(percent * 100)),
-                                                                                (time.process_time() - start_time)))
+            sys.stdout.write(
+                "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                              int(round(percent * 100)),
+                                                                                              (
+                                                                                                          time.process_time() - start_time)))
             sys.stdout.flush()
 
         return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
@@ -1318,7 +1343,8 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
     except IndexError:
         print("quad piece approximation of measurements error")
 
-#quad piece approximation start of measurements
+
+# quad piece approximation start of measurements
 def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, x_est_start, t_meas_full,
                               R_meas_full, Vr_meas_full, theta_meas_full, window_set, parameters_bounds):
     try:
@@ -1557,15 +1583,15 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
                 dd[3, 2] = dd[2, 3]
 
             dd_dd = np.dot(np.linalg.inv(dd), d)
-            if np.isreal(dd_dd[0]) and np.isreal(dd_dd[1]) and np.isreal(dd_dd[2]) and np.isreal(dd_dd[3]):
+            if not (math.isnan(dd_dd[0]) and math.isnan(dd_dd[1]) and math.isnan(dd_dd[2]) and math.isnan(dd_dd[3])):
                 x_est = x_est - dd_dd
 
-        if np.isreal(x_est[0]) and np.isreal(x_est[1]) and np.isreal(x_est[2]) and np.isreal(x_est[3]):
+        if not (math.isnan(x_est[0]) and math.isnan(x_est[1]) and math.isnan(x_est[2]) and math.isnan(x_est[3])):
             if ((x_est[0] > parameters_bounds[0][0] and x_est[0] < parameters_bounds[0][1]) and
                     (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
-                    x_est = x_est
+                x_est = x_est
         else:
             x_est = x_est_start
 
@@ -1575,9 +1601,8 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
         print("quad piece approximation start of measurements")
 
 
-#linear piece estimation of measurements
+# linear piece estimation of measurements
 def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, N, m, g, x_L, y_L, h_L):
-
     t_meas_plot = []
     x_tr_er_plot = []
     h_tr_er_plot = []
@@ -1592,7 +1617,6 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t
     A_abs_est_plot = []
     Ax_true_er_plot = []
     Ah_true_er_plot = []
-
 
     for s in range(len(x_est_top)):
 
@@ -1728,14 +1752,13 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t
         Ax_true_er_plot.append(Ax_true_er)
         Ah_true_er_plot.append(Ah_true_er)
 
-
     return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
            Ah_true_er_plot
 
-#quad piece estimation of measurements
-def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, N, m, g, x_L, y_L, h_L):
 
+# quad piece estimation of measurements
+def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, N, m, g, x_L, y_L, h_L):
     t_meas_plot = []
     x_tr_er_plot = []
     h_tr_er_plot = []
@@ -1902,13 +1925,12 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
         Ax_true_er_plot.append(Ax_true_er)
         Ah_true_er_plot.append(Ah_true_er)
 
-
     return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
            Ah_true_er_plot
 
 
-#inital trajectory section assessment - inital start speed
+# inital trajectory section assessment - inital start speed
 def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas):
     N = 1000
 
@@ -1974,7 +1996,7 @@ def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_m
     return x_est
 
 
-#inital trajectory section assessment - inital start speed reactive
+# inital trajectory section assessment - inital start speed reactive
 def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
     N = 1000
 
@@ -2041,13 +2063,15 @@ def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
         V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
         A_abs_true_start[k] = np.sqrt(Ax_true_start[k] ** 2 + Ah_true_start[k] ** 2)
         R_true_start[k] = np.sqrt((x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
-        Vr_true_start[k] = (Vx_true_start[k] * (x_true_start[k] - x_L) + Vh_true_start[k] * (h_true_start[k] - h_L)) / np.sqrt(
+        Vr_true_start[k] = (Vx_true_start[k] * (x_true_start[k] - x_L) + Vh_true_start[k] * (
+                    h_true_start[k] - h_L)) / np.sqrt(
             (x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
         theta_true_start[k] = np.arctan((h_true_start[k] - h_L) / np.sqrt((x_true_start[k] - x_L) ** 2 + y_L ** 2))
         alpha_true_start[k] = np.arctan(Vh_true_start[k] / Vx_true_start[k])
 
     return t, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
            V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start
+
 
 # trajectory end
 def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_end, Vh_tr_end, V_abs_tr_end, Ax_tr_end,
@@ -2121,7 +2145,7 @@ def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_e
         else:
 
             mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_end[k - 1] / (R * T)))) / m
-            #mu_k[k] = 0.5 * Cx * (np.pi * r ** 2) * rho_0 / m
+            # mu_k[k] = 0.5 * Cx * (np.pi * r ** 2) * rho_0 / m
             Vx_true_end[k] = Vx_true_end[k - 1] + (
                     -mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vx_true_end[k - 1]) * \
                              (t[k] - t[k - 1])
@@ -2247,6 +2271,7 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_
 
     return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot
 
+
 # quad piece estimation error
 def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas, theta_meas,
                                      m, g, x_L, y_L, h_L):
@@ -2351,6 +2376,7 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
 
     return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot
 
+
 # linear piece estimation start
 def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
     x_0 = 0
@@ -2445,6 +2471,7 @@ def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L)
     return t, x_tr_er, h_tr_er, R_est_full, Vr_est_full, theta_est_full, \
            Vx_true_er, Vh_true_er, V_abs_est, alpha_tr_er, A_abs_est, Ax_true_er, \
            Ah_true_er
+
 
 # quad piece estimation start
 def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
@@ -2561,7 +2588,6 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
 def func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot, R_est_err_plot, Vr_est_err_plot,
                         theta_est_err_plot,
                         sko_R_tz, sko_Vr_tz, sko_theta_tz):
-
     track_meas = {}
     meas = []
 
@@ -2652,6 +2678,7 @@ def func_lsm_kubic(X, H):
     out = np.linalg.solve(A, b)
 
     return out
+
 
 # active-reactive estimation trajectory
 def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, Vx_tr_er_1, Vh_tr_er_1, Ax_tr_er_1, Ah_tr_er_1,
@@ -2778,6 +2805,7 @@ def func_wind(t_fin, x_fin, v0, alpha, wind_module, wind_direction, az):
     Wz = wind_module * np.sin(Aw)
     z_wind = Wz * (t_fin - x_fin / (v0 / np.cos(alpha)))
     return z_wind
+
 
 # forwarding the drop point
 def func_point_fall(z, x_fin, can_B, can_L, az):
