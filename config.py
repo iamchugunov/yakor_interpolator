@@ -97,6 +97,9 @@ class Config():
         self.ksi_theta = 0.
         self.theta_n1 = 0.
 
+        self.sigma_RVr = 0.
+        self.sigma_theta = 0.
+
         self.bullets = []
 
         with open('bullets.json', 'r') as file:
