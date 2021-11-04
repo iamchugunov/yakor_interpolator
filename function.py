@@ -183,6 +183,9 @@ def func_angle_smoother(theta_meas, t_meas, delta):
     x_est_sm_stor.append(x_est_sm_prev)
     dx_est_sm_prev = dx_est_stor[-1]
 
+    theta_filt = np.zeros(len(x_est_stor))
+    theta_filt[0] = x_est_sm_prev[0]
+
     for i in range(len(x_est_stor)-1):
 
         F = np.array([[1, dT_stor[len(x_est_stor)-i-1]], [0, 1]])
@@ -194,7 +197,9 @@ def func_angle_smoother(theta_meas, t_meas, delta):
         x_est_sm_prev = x_est_sm
         dx_est_sm_prev = dx_est_sm
 
-    return x_est_sm_stor[::-1]
+        theta_filt[i+1] = x_est_sm[0]
+
+    return theta_filt[::-1]
 
 #coord (R, Vr) smoother filtering
 def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
@@ -247,6 +252,12 @@ def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
     x_est_sm_stor.append(x_est_sm_prev)
     dx_est_sm_prev = dx_est_stor[-1]
 
+    R_filt = np.zeros(len(x_est_stor))
+    Vr_filt = np.zeros(len(x_est_stor))
+
+    R_filt[0] = x_est_sm_prev[0]
+    Vr_filt[0] = x_est_sm_prev[1]
+
     for i in range(len(x_est_stor)-1):
 
         F = np.array([[1, dT_stor[len(x_est_stor)-i-1], 0], [0, 1, dT_stor[len(x_est_stor)-i-1]],[0, 0, 1]])
@@ -258,7 +269,10 @@ def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
         x_est_sm_prev = x_est_sm
         dx_est_sm_prev = dx_est_sm
 
-    return x_est_sm_stor[::-1]
+        R_filt[i+1] = x_est_sm[0]
+        Vr_filt[i+1] = x_est_sm[1]
+
+    return R_filt[::-1], Vr_filt[::-1]
 
 # filtered measuring arrays
 def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_theta, theta_n1):
