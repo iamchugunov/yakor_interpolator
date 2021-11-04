@@ -107,6 +107,7 @@ def process_initial_data(mes, config):
 
 
 def process_measurements(data, config, client):
+    # добавить время
     if config.ini_data_flag:
 
         start_time = time.process_time()
@@ -946,6 +947,10 @@ def process_measurements(data, config, client):
                 winlen1, step_sld1 = length_winlen(Ndlen1)
                 winlen2, step_sld2 = length_winlen(Ndlen2)
 
+                # theta_meas_1_two = func_angle_smoother(theta_meas_1, t_meas_1, 0.004)
+                # R_meas_1_two = func_coord_smoother(R_meas_1, Vr_meas_1, t_meas_1, 0.1)
+                # Vr_meas_1_two = func_coord_smoother(R_meas_1, Vr_meas_1, t_meas_1, 0.1)
+
                 R_meas_1_filter, Vr_meas_1_filter, theta_meas_1_filter = func_filter_data(t_meas_1, R_meas_1, Vr_meas_1,
                                                                                           theta_meas_1,
                                                                                           config.ksi_Vr,
@@ -959,6 +964,10 @@ def process_measurements(data, config, client):
                                                                                           config.n1, config.n2,
                                                                                           config.ksi_theta,
                                                                                           config.theta_n1)
+
+                # theta_meas_1_filter_two = func_angle_smoother(theta_meas_1_filter, t_meas_1, 0.004)
+                # R_meas_1_filter_two = func_coord_smoother(R_meas_1_filter, Vr_meas_1_filter, t_meas_1, 0.1)
+                # Vr_meas_1_filter_two = func_coord_smoother(R_meas_1_filter, Vr_meas_1_filter, t_meas_1, 0.1)
 
                 xhy_0_set_1, x_est_fin_1, meas_t_ind_1, window_set_1, t_meas_tr_1, R_meas_tr_1, \
                 Vr_meas_tr_1, theta_meas_tr_1 = func_quad_piece_app(config.loc_X, config.loc_Y, config.loc_Z,
@@ -1381,15 +1390,15 @@ def process_measurements(data, config, client):
                 config.track = track_meas
                 config.track_meas = track_meas
 
-        # if config.flag_return == 1:
-        #     hashes = '#' * int(round(20))
-        #     spaces = ' ' * (20 - len(hashes))
-        #     sys.stdout.write("\rCalculating %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(100)),
-        #                                                                       (time.process_time() - start_time)))
-        #     sys.stdout.flush()
-        #
-        #     config.track = track_meas
-        #     config.track_meas = track_meas
+        if config.flag_return == 1:
+            hashes = '#' * int(round(20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write("\rCalculating %: [{0}] {1}% {2} seconds".format(hashes + spaces, int(round(100)),
+                                                                              (time.process_time() - start_time)))
+            sys.stdout.flush()
+
+            config.track = track_meas
+            config.track_meas = track_meas
 
         flag = 1
 
