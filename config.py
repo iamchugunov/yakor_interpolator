@@ -91,12 +91,6 @@ class Config():
         self.dR_bounds = [0, 0]
         self.angle_bounds = [0, 0]
         # filter params
-        self.ksi_Vr = 0.
-        self.Vr_n1 = 0.
-        self.Vr_n2 = 0.
-        self.ksi_theta = 0.
-        self.theta_n1 = 0.
-
         self.sigma_RVr = 0.
         self.sigma_theta = 0.
 
