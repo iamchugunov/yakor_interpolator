@@ -974,7 +974,7 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
 
 # quad piece approximation start of measurements
 def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
-                        R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds):
+                        R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds, types):
     try:
         if winlen > 29:
             Nkol = 15
@@ -1028,6 +1028,17 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
 
         start_time = time.process_time()
 
+        if types == 1:
+            percent_done = 100
+
+        elif types == 2:
+            percent_done = 50
+
+        elif types == 3:
+            percent_done = 50
+
+
+
         for w in range(NoW):
 
             percent = float(w) / NoW
@@ -1035,7 +1046,7 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             spaces = ' ' * (20 - len(hashes))
             sys.stdout.write(
                 "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
-                                                                                              int(round(percent * 100)),
+                                                                                              int(round(percent * percent_done)),
                                                                                               (
                                                                                                           time.process_time() - start_time)))
             sys.stdout.flush()
@@ -1333,7 +1344,7 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             spaces = ' ' * (20 - len(hashes))
             sys.stdout.write(
                 "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
-                                                                                              int(round(percent * 100)),
+                                                                                              int(round(percent * percent_done)),
                                                                                               (
                                                                                                           time.process_time() - start_time)))
             sys.stdout.flush()
@@ -1592,6 +1603,12 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
                 x_est = x_est
+                if x_est[1] > x_est_start[1]:
+                    x_est = x_est
+                else:
+                    x_est = x_est_start
+            else:
+                x_est = x_est_start
         else:
             x_est = x_est_start
 
@@ -1931,8 +1948,7 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
 
 
 # inital trajectory section assessment - inital start speed
-def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas):
-    N = 1000
+def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas, N):
 
     xhy_0_start = xhy_0_set[0]
     x_est_start = x_est_top[0]
@@ -1997,8 +2013,7 @@ def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_m
 
 
 # inital trajectory section assessment - inital start speed reactive
-def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
-    N = 1000
+def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L, N):
 
     xhy_0_start = xhy_0_set[0]
     x_est_start = x_est_top[0]
@@ -2076,10 +2091,8 @@ def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
 # trajectory end
 def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_end, Vh_tr_end, V_abs_tr_end, Ax_tr_end,
                         Ah_tr_end, A_abs_tr_end, alpha_tr_end, t_meas, R_tr_end, Vr_tr_end, theta_tr_end, x_L, y_L, h_L,
-                        hei):
+                        hei, N):
     # hei - bullet shield height
-
-    N = 10000
     dR = 5
 
     V0 = V_abs_tr_end[-1][-1]
@@ -2378,11 +2391,9 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
 
 
 # linear piece estimation start
-def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
+def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L, N):
     x_0 = 0
     h_0 = 0
-
-    N = 1000
 
     tmin = 0
     tmax = t_meas[0][0]
@@ -2474,11 +2485,10 @@ def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L)
 
 
 # quad piece estimation start
-def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
+def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L, N):
     x_0 = 0
     h_0 = 0
 
-    N = 1000
 
     tmin = 0
     tmax = t_meas[0][0]
