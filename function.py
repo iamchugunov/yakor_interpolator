@@ -271,6 +271,20 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
 
         for w in range(NoW):
 
+<<<<<<< Updated upstream
+=======
+            percent = float(w) / NoW
+            hashes = '#' * int(round(percent * 20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write(
+                "\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                                int(round(
+                                                                                                    percent * 100)),
+                                                                                                (
+                                                                                                        time.process_time() - start_time)))
+            sys.stdout.flush()
+
+>>>>>>> Stashed changes
             if w == 0:
 
                 meas_t = [i for i in range(len(t_meas_full))]
@@ -545,6 +559,20 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                         print(window_set[w], x_est_top[w], xhy_0_set[w], meas_t_ind[w])
                         break
 
+<<<<<<< Updated upstream
+=======
+            percent = float(NoW) / NoW
+            hashes = '#' * int(round(percent * 20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write(
+                "\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                                int(round(
+                                                                                                    percent * 100)),
+                                                                                                (
+                                                                                                        time.process_time() - start_time)))
+            sys.stdout.flush()
+
+>>>>>>> Stashed changes
         return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
     except IndexError:
         print("Ошибка - расчет оценки траектории")
@@ -786,23 +814,46 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
                     (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
+<<<<<<< Updated upstream
                 print(x_est)
 
         return x_est
+=======
+                x_est = x_est
+                if x_est[1] > x_est_start[1]:
+                    x_est = x_est
+                else:
+                    x_est = x_est_start
+            else:
+                x_est = x_est_start
+        else:
+            x_est = x_est_start
+
+>>>>>>> Stashed changes
     except IndexError:
         print("Ошибка - расчет оценки траектории")
         print('Ошибка:\n', traceback.format_exc())
         ctypes.windll.user32.MessageBoxW(None, "Расчет оценки траектории", "Ошибка!", 0)
 
 
+<<<<<<< Updated upstream
 # квадратичная аппроксимация
 def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
                         R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds):
+=======
+# quad piece approximation start of measurements
+def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, x_est_0, t_meas_full,
+                        R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds, types, window):
+>>>>>>> Stashed changes
     try:
         if winlen > 29:
             Nkol = 15
         else:
             Nkol = 5
+
+        k0 = x_est_0[0]
+        v0 = x_est_0[1]
+        dR = x_est_0[2]
 
         h_0_1 = R_meas_full[0] * np.sin(theta_meas_full[0]) + h_L
         x_0_1 = np.sqrt((R_meas_full[0] * np.cos(theta_meas_full[0])) ** 2 - y_L ** 2) + x_L
@@ -814,7 +865,10 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
         Vh0 = (h_0_2 - h_0_1) / (t_meas_full[1] - t_meas_full[0])
         absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
 
-        x_est_init = [k0, absV0, dR, np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))]
+        x_est_init = x_est_0
+
+        if window == 1:
+            x_est_init = [k0, absV0, dR, np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))]
 
         u = 0
 
@@ -849,8 +903,33 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             NoW = NoW + 1
         NoW = int(NoW)
 
+<<<<<<< Updated upstream
         for w in range(NoW):
 
+=======
+        start_time = time.process_time()
+
+        percent_done = 100
+        if types == 1:
+            percent_done = 50
+
+        if window == 1:
+            NoW = 1
+
+        for w in range(NoW):
+
+            percent = float(w) / NoW
+            hashes = '#' * int(round(percent * 20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write(
+                "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                              int(round(
+                                                                                                  percent * percent_done)),
+                                                                                              (
+                                                                                                      time.process_time() - start_time)))
+            sys.stdout.flush()
+
+>>>>>>> Stashed changes
             if w == 0:
 
                 meas_t = [i for i in range(len(t_meas_full))]
@@ -867,6 +946,7 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                 R_meas_t = R_meas_full[meas_t_ind[w][0]:]
                 theta_meas_t = theta_meas_full[meas_t_ind[w][0]:]
                 Vr_meas_t = Vr_meas_full[meas_t_ind[w][0]:]
+
 
             for q in range(len(WindowSet)):
 
@@ -1136,6 +1216,21 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                         window_set.append(WindowSet[q])
                         print(window_set[w], x_est_top[w], xhy_0_set[w], meas_t_ind[w])
                         break
+<<<<<<< Updated upstream
+=======
+
+            percent = float(NoW) / NoW
+            hashes = '#' * int(round(percent * 20))
+            spaces = ' ' * (20 - len(hashes))
+            sys.stdout.write(
+                "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                              int(round(
+                                                                                                  percent * percent_done)),
+                                                                                              (
+                                                                                                      time.process_time() - start_time)))
+            sys.stdout.flush()
+
+>>>>>>> Stashed changes
         return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
     except IndexError:
         print("Ошибка - расчет оценки траектории")
@@ -1143,7 +1238,13 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
         ctypes.windll.user32.MessageBoxW(None, "Расчет оценки траектории", "Ошибка!", 0)
 
 
+<<<<<<< Updated upstream
 # квадратичная аппроксимация для начального участка
+=======
+
+
+# quad piece approximation start of measurements
+>>>>>>> Stashed changes
 def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, x_est_start, t_meas_full,
                               R_meas_full, Vr_meas_full, theta_meas_full, window_set, parameters_bounds):
     try:
@@ -1389,7 +1490,21 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
                     (x_est[1] > parameters_bounds[1][0] and x_est[1] < parameters_bounds[1][1]) and
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
+<<<<<<< Updated upstream
                 print(x_est)
+=======
+                x_est = x_est
+                if x_est[1] > x_est_start[1]:  # для 762 отрешивается 773
+                    x_est = x_est
+                else:
+                    x_est = x_est_start
+                    # x_est = x_est
+            else:
+                x_est = x_est_start
+        else:
+            x_est = x_est_start
+
+>>>>>>> Stashed changes
         return x_est
     except IndexError:
         print("Ошибка - расчет оценки траектории")
@@ -1727,10 +1842,15 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
            Ah_true_er_plot
 
 
+<<<<<<< Updated upstream
 # начальный участок траектории - оценка нулевой скорости
 def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas):
     N = 1000
 
+=======
+# inital trajectory section assessment - inital start speed
+def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas, N):
+>>>>>>> Stashed changes
     xhy_0_start = xhy_0_set[0]
     x_est_start = x_est_top[0]
 
@@ -1794,10 +1914,15 @@ def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_m
     return x_est
 
 
+<<<<<<< Updated upstream
 # начальный участок для ускоренного снаряда
 def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
     N = 1000
 
+=======
+# inital trajectory section assessment - inital start speed reactive
+def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L, N):
+>>>>>>> Stashed changes
     xhy_0_start = xhy_0_set[0]
     x_est_start = x_est_top[0]
 
@@ -1861,7 +1986,12 @@ def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L):
         V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
         A_abs_true_start[k] = np.sqrt(Ax_true_start[k] ** 2 + Ah_true_start[k] ** 2)
         R_true_start[k] = np.sqrt((x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
+<<<<<<< Updated upstream
         Vr_true_start[k] = (Vx_true_start[k] * (x_true_start[k] - x_L) + Vh_true_start[k] * (h_true_start[k] - h_L)) / np.sqrt(
+=======
+        Vr_true_start[k] = (Vx_true_start[k] * (x_true_start[k] - x_L) + Vh_true_start[k] * (
+                h_true_start[k] - h_L)) / np.sqrt(
+>>>>>>> Stashed changes
             (x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
         theta_true_start[k] = np.arctan((h_true_start[k] - h_L) / np.sqrt((x_true_start[k] - x_L) ** 2 + y_L ** 2))
         alpha_true_start[k] = np.arctan(Vh_true_start[k] / Vx_true_start[k])
@@ -2271,6 +2401,7 @@ def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L)
            Ah_true_er
 
 
+<<<<<<< Updated upstream
 # оценка измерений для квадратичной аппроксимации - для начального участка
 def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
     x_0 = 0
@@ -2278,8 +2409,16 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L):
 
     N = 1000
 
+=======
+# quad piece estimation start
+def func_quad_piece_estimation_start(x_est_start, t_meas, meas_t_ind, window_set, m, g, x_L, y_L, h_L, N):
+    x_0 = 0
+    h_0 = 0
+
+>>>>>>> Stashed changes
     tmin = 0
-    tmax = t_meas[0][0]
+    tmax = t_meas[meas_t_ind[0][window_set[0][0] - 1]:meas_t_ind[0][-1]][0]
+
 
     k0 = x_est_start[0]
     v0 = x_est_start[1]
