@@ -12,7 +12,8 @@ client.connect(config.ADDR)
 # 0x150001 - найстройки выстрела
 # 0х150002 - массив измерений
 # 0х150003 - массив точек траекторий
-# 0x150004 - сообщение об ошибке
+# 0x150004 - массив измерений с валидными точками
+# 0x150005 - сообщение об ошибке
 
 while True:
 
@@ -63,21 +64,26 @@ while True:
                         client.sendall((0x150003).to_bytes(4, "little"))
                         client.sendall(data2send)
 
+                        measdata2send = json.dumps(config.track_meas).encode()
+                        client.sendall(len(measdata2send).to_bytes(4, "little"))
+                        client.sendall((0x150004).to_bytes(4, "little"))
+                        client.sendall(measdata2send)
+
                     else:
                         data2send = json.dumps(config.track).encode()
                         client.sendall(len(data2send).to_bytes(4, "little"))
-                        client.sendall((0x150004).to_bytes(4, "little"))
+                        client.sendall((0x150005).to_bytes(4, "little"))
                         client.sendall(data2send)
                         print("Error")
                 else:
                     data2send = json.dumps(config.track).encode()
                     client.sendall(len(data2send).to_bytes(4, "little"))
-                    client.sendall((0x150004).to_bytes(4, "little"))
+                    client.sendall((0x150005).to_bytes(4, "little"))
                     client.sendall(data2send)
                     print("Error")
             else:
                 data2send = json.dumps(config.track).encode()
                 client.sendall(len(data2send).to_bytes(4, "little"))
-                client.sendall((0x150004).to_bytes(4, "little"))
+                client.sendall((0x150005).to_bytes(4, "little"))
                 client.sendall(data2send)
                 print("Error")

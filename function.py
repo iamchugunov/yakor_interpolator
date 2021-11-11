@@ -73,10 +73,10 @@ def length_winlen(Ndlen):
     step_sld = 0
 
     if Ndlen > 2 and Ndlen <= 10:
-        winlen = 2
-        step_sld = 1
+        winlen = 5
+        step_sld = 2
     if Ndlen > 10 and Ndlen <= 20:
-        winlen = 3
+        winlen = 5
         step_sld = 2
     if Ndlen > 20 and Ndlen <= 40:
         winlen = 5
@@ -366,7 +366,7 @@ def func_active_reactive(t_meas, R_meas, Vr_meas):
 
 
 # linear piece approximation of measurements
-def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
+def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, v0, dR, alpha0, t_meas_full,
                           R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds):
     try:
         if winlen > 29:
@@ -382,9 +382,17 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
 
         Vx0 = (x_0_2 - x_0_1) / (t_meas_full[1] - t_meas_full[0])
         Vh0 = (h_0_2 - h_0_1) / (t_meas_full[1] - t_meas_full[0])
-        absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
 
-        x_est_init = [k0, absV0, dR, np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))]
+        absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+        Alpha0 = np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))
+
+        if Alpha0 < 0:
+            Alpha0 = alpha0
+
+        if v0 - absV0 > 200:
+            absV0 = v0
+
+        x_est_init = [k0, absV0, dR, Alpha0]
 
         u = 0
 
@@ -430,7 +438,7 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                                                                                                 int(round(
                                                                                                     percent * 100)),
                                                                                                 (
-                                                                                                            time.process_time() - start_time)))
+                                                                                                        time.process_time() - start_time)))
             sys.stdout.flush()
 
             if w == 0:
@@ -717,9 +725,8 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                                                                                                 int(round(
                                                                                                     percent * 100)),
                                                                                                 (
-                                                                                                            time.process_time() - start_time)))
+                                                                                                        time.process_time() - start_time)))
             sys.stdout.flush()
-
 
         return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
 
@@ -973,13 +980,14 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
 
 
 # quad piece approximation start of measurements
-def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
+def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, v0, dR, alpha0, t_meas_full,
                         R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds, types):
     try:
         if winlen > 29:
             Nkol = 15
         else:
             Nkol = 5
+
 
         h_0_1 = R_meas_full[0] * np.sin(theta_meas_full[0]) + h_L
         x_0_1 = np.sqrt((R_meas_full[0] * np.cos(theta_meas_full[0])) ** 2 - y_L ** 2) + x_L
@@ -989,9 +997,26 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
 
         Vx0 = (x_0_2 - x_0_1) / (t_meas_full[1] - t_meas_full[0])
         Vh0 = (h_0_2 - h_0_1) / (t_meas_full[1] - t_meas_full[0])
-        absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
 
-        x_est_init = [k0, absV0, dR, np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))]
+        absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+        Alpha0 = np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))
+
+        percent_done = 100
+
+        if Alpha0 < 0:
+            Alpha0 = alpha0
+        if v0 - absV0 > 200:
+            absV0 = v0
+
+        if types == 1:
+
+            # act-react
+            percent_done = 50
+
+            absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+            Alpha0 = np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))
+
+        x_est_init = [k0, absV0, dR, Alpha0]
 
         u = 0
 
@@ -1028,16 +1053,6 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
 
         start_time = time.process_time()
 
-        if types == 1:
-            percent_done = 100
-
-        elif types == 2:
-            percent_done = 50
-
-        elif types == 3:
-            percent_done = 50
-
-
 
         for w in range(NoW):
 
@@ -1046,9 +1061,10 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             spaces = ' ' * (20 - len(hashes))
             sys.stdout.write(
                 "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
-                                                                                              int(round(percent * percent_done)),
+                                                                                              int(round(
+                                                                                                  percent * percent_done)),
                                                                                               (
-                                                                                                          time.process_time() - start_time)))
+                                                                                                      time.process_time() - start_time)))
             sys.stdout.flush()
 
             if w == 0:
@@ -1093,11 +1109,12 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                 Vx0 = (x_0_2.real - x_0.real) / (t_meas[1] - t_meas[0])
                 Vh0 = (h_0_2 - h_0) / (t_meas[1] - t_meas[0])
                 absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+                Alpha0 = np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))
 
                 if w == 0 and q == 0:
                     x_est = x_est_init
                 else:
-                    x_est = [k0, absV0, dR, np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))]
+                    x_est = [k0, absV0, dR, Alpha0]
 
                 for p in range(30):
 
@@ -1344,9 +1361,10 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             spaces = ' ' * (20 - len(hashes))
             sys.stdout.write(
                 "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
-                                                                                              int(round(percent * percent_done)),
+                                                                                              int(round(
+                                                                                                  percent * percent_done)),
                                                                                               (
-                                                                                                          time.process_time() - start_time)))
+                                                                                                      time.process_time() - start_time)))
             sys.stdout.flush()
 
         return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
@@ -1949,7 +1967,6 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_m
 
 # inital trajectory section assessment - inital start speed
 def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas, N):
-
     xhy_0_start = xhy_0_set[0]
     x_est_start = x_est_top[0]
 
@@ -2014,7 +2031,6 @@ def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_m
 
 # inital trajectory section assessment - inital start speed reactive
 def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L, N):
-
     xhy_0_start = xhy_0_set[0]
     x_est_start = x_est_top[0]
 
@@ -2079,7 +2095,7 @@ def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L, N):
         A_abs_true_start[k] = np.sqrt(Ax_true_start[k] ** 2 + Ah_true_start[k] ** 2)
         R_true_start[k] = np.sqrt((x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
         Vr_true_start[k] = (Vx_true_start[k] * (x_true_start[k] - x_L) + Vh_true_start[k] * (
-                    h_true_start[k] - h_L)) / np.sqrt(
+                h_true_start[k] - h_L)) / np.sqrt(
             (x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
         theta_true_start[k] = np.arctan((h_true_start[k] - h_L) / np.sqrt((x_true_start[k] - x_L) ** 2 + y_L ** 2))
         alpha_true_start[k] = np.arctan(Vh_true_start[k] / Vx_true_start[k])
@@ -2206,10 +2222,10 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_
         x_est_fin = x_est_top[s]
 
         if s == (len(x_est_top) - 1):
-            t = t_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
-            R_er = R_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
-            Vr_er = Vr_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
-            theta_er = theta_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
+            t = t_meas[meas_t_ind[s][window_set[s][0] - 1]:]
+            R_er = R_meas[meas_t_ind[s][window_set[s][0] - 1]:]
+            Vr_er = Vr_meas[meas_t_ind[s][window_set[s][0] - 1]:]
+            theta_er = theta_meas[meas_t_ind[s][window_set[s][0] - 1]:]
             tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
 
         else:
@@ -2303,18 +2319,20 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_se
         x_est_fin = x_est_top[s]
 
         if s == (len(x_est_top) - 1):
-            t = t_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
-            R_er = R_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
-            Vr_er = Vr_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
-            theta_er = theta_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][-1]]
-            tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
+
+            t = t_meas[meas_t_ind[s][0]:]
+            R_er = R_meas[meas_t_ind[s][0]:]
+            Vr_er = Vr_meas[meas_t_ind[s][0]:]
+            theta_er = theta_meas[meas_t_ind[s][0]:]
+            tmin = t[0]
 
         else:
-            t = t_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][window_set[s][1]]]
-            R_er = R_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][window_set[s][1]]]
-            Vr_er = Vr_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][window_set[s][1]]]
-            theta_er = theta_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][window_set[s][1]]]
-            tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
+
+            t = t_meas[meas_t_ind[s][0]:meas_t_ind[s+1][0]]
+            R_er = R_meas[meas_t_ind[s][0]:meas_t_ind[s+1][0]]
+            Vr_er = Vr_meas[meas_t_ind[s][0]:meas_t_ind[s+1][0]]
+            theta_er = theta_meas[meas_t_ind[s][0]:meas_t_ind[s+1][0]]
+            tmin = t[0]
 
         t_err_plot.append(t)
         R_er_plot.append(R_er)
@@ -2489,7 +2507,6 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L, N
     x_0 = 0
     h_0 = 0
 
-
     tmin = 0
     tmax = t_meas[0][0]
 
@@ -2595,50 +2612,56 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L, N
            Ah_true_er
 
 
-def func_std_error_meas(t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot, R_est_err_plot, Vr_est_err_plot,
+def func_std_error_meas(track_meas, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot, R_est_err_plot, Vr_est_err_plot,
                         theta_est_err_plot,
                         sko_R_tz, sko_Vr_tz, sko_theta_tz):
-    track_meas = {}
-    meas = []
-
     R_true = []
     Vr_true = []
     theta_true = []
 
-    Nlen = 0
+    validR = []
+    validVr = []
+    validTheta = []
 
     for k in range(len(R_est_err_plot)):
         for j in range(len(R_est_err_plot[k])):
             if (-3 * sko_R_tz < R_est_err_plot[k][j]) and (R_est_err_plot[k][j] < 3 * sko_R_tz):
-                R_true.append(R_est_err_plot[k][j])
                 valid_R = 0
             else:
                 valid_R = 1
 
             if (-3 * sko_Vr_tz < Vr_est_err_plot[k][j]) and (Vr_est_err_plot[k][j] < 3 * sko_Vr_tz):
-                Vr_true.append(Vr_est_err_plot[k][j])
                 valid_Vr = 0
             else:
                 valid_Vr = 1
 
             if (-3 * sko_theta_tz < theta_est_err_plot[k][j]) and (theta_est_err_plot[k][j] < 3 * sko_theta_tz):
-                theta_true.append(theta_est_err_plot[k][j])
                 valid_theta = 0
             else:
                 valid_theta = 1
 
-            meas.append({"t": t_err_plot[k][j], "R": R_er_plot[k][j], "Vr": Vr_er_plot[k][j],
-                         "theta": np.rad2deg(theta_er_plot[k][j]),
-                         "valid_R": valid_R,
-                         "valid_Vr": valid_Vr, "valid_theta": valid_theta})
+            # STD across all measurements
+            R_true.append(R_est_err_plot[k][j])
+            Vr_true.append(Vr_est_err_plot[k][j])
+            theta_true.append(theta_est_err_plot[k][j])
 
-            Nlen += 1
+            validR.append(valid_R)
+            validVr.append(valid_Vr)
+            validTheta.append(valid_theta)
 
+    # STD across all measurements
     SKO_R_true = np.std(np.array(R_true))
     SKO_V_true = np.std(np.array(Vr_true))
     SKO_theta_true = np.std(np.array(theta_true))
 
-    track_meas["meas"] = meas
+    # return the measurement vector, flag valid
+    for i in range(len(track_meas["points"])):
+        track_meas["points"][i]["saEpsilon"] = SKO_theta_true
+        track_meas["points"][i]["validEpsilon"] = validTheta[i]
+        track_meas["points"][i]["saR"] = SKO_R_true
+        track_meas["points"][i]["validR"] = validR[i]
+        track_meas["points"][i]["saVr"] = SKO_V_true
+        track_meas["points"][i]["validVr"] = validVr[i]
 
     return track_meas, SKO_R_true, SKO_V_true, SKO_theta_true
 
@@ -2875,85 +2898,84 @@ def calculate_ellipse(x, y, a, b, angle, steps):
 
     return X, Y
 
-
-def sampling_points(points, TD):
-    t = []
-    x = []
-    y = []
-    z = []
-    V = []
-    Vx = []
-    Vy = []
-    Vz = []
-    A = []
-    Ax = []
-    Ay = []
-    Az = []
-    C = []
-    alpha = []
-    dR = []
-    AzR = []
-    VrR = []
-    EvR = []
-
-    for i in range(len(points)):
-        t.append(points[i]["t"])
-        x.append(points[i]["x"])
-        y.append(points[i]["y"])
-        z.append(points[i]["z"])
-        V.append(points[i]["V"])
-        Vx.append(points[i]["Vx"])
-        Vy.append(points[i]["Vy"])
-        Vz.append(points[i]["Vz"])
-        A.append(points[i]["A"])
-        Ax.append(points[i]["Ax"])
-        Ay.append(points[i]["Ay"])
-        Az.append(points[i]["Az"])
-        C.append(points[i]["C"])
-        alpha.append(points[i]["alpha"])
-        dR.append(points[i]["DistanceR"])
-        AzR.append(points[i]["AzR"])
-        VrR.append(points[i]["VrR"])
-        EvR.append(points[i]["EvR"])
-
-    tsampling = np.arange(t[0], t[-1], TD)
-
-    newlen = len(tsampling)
-    oldlen = len(t)
-
-    K = oldlen / newlen
-    K = int(K)
-
-    if K > 0:
-
-        td = t[0:oldlen:K]
-        xd = x[0:oldlen:K]
-        yd = y[0:oldlen:K]
-        zd = z[0:oldlen:K]
-        Vd = V[0:oldlen:K]
-        Vxd = Vx[0:oldlen:K]
-        Vyd = Vy[0:oldlen:K]
-        Vzd = Vz[0:oldlen:K]
-        Ad = A[0:oldlen:K]
-        Axd = Ax[0:oldlen:K]
-        Ayd = Ay[0:oldlen:K]
-        Azd = Az[0:oldlen:K]
-        Cd = C[0:oldlen:K]
-        alphad = alpha[0:oldlen:K]
-        dRd = dR[0:oldlen:K]
-        AzRd = AzR[0:oldlen:K]
-        VrRd = VrR[0:oldlen:K]
-        EvRd = EvR[0:oldlen:K]
-
-        points = []
-
-        for i in range(len(td)):
-            points.append({"t": td[i], "x": xd[i], "y": yd[i],
-                           "z": zd[i], "V": Vd[i], "Vx": Vxd[i],
-                           "Vy": Vyd[i], "Vz": Vzd[i], "A": Ad[i],
-                           "Ax": Axd[i], "Ay": Ayd[i], "Az": Azd[i], "C": Cd[i],
-                           "alpha": alphad[i],
-                           "DistanceR": dRd[i], "AzR": AzRd[i],
-                           "VrR": VrRd[i], "EvR": EvRd[i]})
-
-    return points
+# def sampling_points(points, TD):
+#     t = []
+#     x = []
+#     y = []
+#     z = []
+#     V = []
+#     Vx = []
+#     Vy = []
+#     Vz = []
+#     A = []
+#     Ax = []
+#     Ay = []
+#     Az = []
+#     C = []
+#     alpha = []
+#     dR = []
+#     AzR = []
+#     VrR = []
+#     EvR = []
+#
+#     for i in range(len(points)):
+#         t.append(points[i]["t"])
+#         x.append(points[i]["x"])
+#         y.append(points[i]["y"])
+#         z.append(points[i]["z"])
+#         V.append(points[i]["V"])
+#         Vx.append(points[i]["Vx"])
+#         Vy.append(points[i]["Vy"])
+#         Vz.append(points[i]["Vz"])
+#         A.append(points[i]["A"])
+#         Ax.append(points[i]["Ax"])
+#         Ay.append(points[i]["Ay"])
+#         Az.append(points[i]["Az"])
+#         C.append(points[i]["C"])
+#         alpha.append(points[i]["alpha"])
+#         dR.append(points[i]["DistanceR"])
+#         AzR.append(points[i]["AzR"])
+#         VrR.append(points[i]["VrR"])
+#         EvR.append(points[i]["EvR"])
+#
+#     tsampling = np.arange(t[0], t[-1], TD)
+#
+#     newlen = len(tsampling)
+#     oldlen = len(t)
+#
+#     K = oldlen / newlen
+#     K = int(K)
+#
+#     if K > 0:
+#
+#         td = t[0:oldlen:K]
+#         xd = x[0:oldlen:K]
+#         yd = y[0:oldlen:K]
+#         zd = z[0:oldlen:K]
+#         Vd = V[0:oldlen:K]
+#         Vxd = Vx[0:oldlen:K]
+#         Vyd = Vy[0:oldlen:K]
+#         Vzd = Vz[0:oldlen:K]
+#         Ad = A[0:oldlen:K]
+#         Axd = Ax[0:oldlen:K]
+#         Ayd = Ay[0:oldlen:K]
+#         Azd = Az[0:oldlen:K]
+#         Cd = C[0:oldlen:K]
+#         alphad = alpha[0:oldlen:K]
+#         dRd = dR[0:oldlen:K]
+#         AzRd = AzR[0:oldlen:K]
+#         VrRd = VrR[0:oldlen:K]
+#         EvRd = EvR[0:oldlen:K]
+#
+#         points = []
+#
+#         for i in range(len(td)):
+#             points.append({"t": td[i], "x": xd[i], "y": yd[i],
+#                            "z": zd[i], "V": Vd[i], "Vx": Vxd[i],
+#                            "Vy": Vyd[i], "Vz": Vzd[i], "A": Ad[i],
+#                            "Ax": Axd[i], "Ay": Ayd[i], "Az": Azd[i], "C": Cd[i],
+#                            "alpha": alphad[i],
+#                            "DistanceR": dRd[i], "AzR": AzRd[i],
+#                            "VrR": VrRd[i], "EvR": EvRd[i]})
+#
+#     return points

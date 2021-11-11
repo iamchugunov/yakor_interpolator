@@ -103,7 +103,9 @@ class Config():
         # flag_return
         self.flag_return = 0
 
+        # track - result approx trajectory
         self.track = []
+        # track_meas - valid measurements
         self.track_meas = []
 
 
