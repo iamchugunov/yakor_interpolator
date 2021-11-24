@@ -1631,9 +1631,6 @@ def func_linear_piece_estimation_start(x_est_start, t_meas, window_set, m, g, x_
 
     k0 = x_est_start[0]
     v0 = x_est_start[1]
-    # как грамотно определить dR, чтобы не было разрывов по R - в начальном участке, делать dR = 0
-    # или как грамотно подобрать нужное место - чем ставить dR
-    dR = x_est_start[2]
     dR = 0
     alpha = x_est_start[3]
 
@@ -1728,7 +1725,6 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, window_set, m, g, x_L,
 
     k0 = x_est_start[0]
     v0 = x_est_start[1]
-    dR = x_est_start[2]
     dR = 0
     alpha = x_est_start[3]
 
@@ -1856,7 +1852,6 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_tru
 
         k0 = x_est_top[s][0]
         v0 = x_est_top[s][1]
-        dR = x_est_top[s][2]
         dR = 0
         alpha = x_est_top[s][3]
 
@@ -2125,7 +2120,7 @@ def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_m
 
     k0 = x_est_start[0]
     v0 = x_est_start[1]
-    dR = x_est_start[2]
+    dR = 0
     alpha = x_est_start[3]
 
     x_0 = xhy_0_start[0]
@@ -2189,7 +2184,7 @@ def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L, N):
 
     k0 = x_est_start[0]
     v0 = x_est_start[1]
-    dR = x_est_start[2]
+    dR = 0
     alpha = x_est_start[3]
 
     x_0 = 0
@@ -2372,6 +2367,10 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_tru
     Vr_est_err_plot = []
     theta_est_err_plot = []
 
+    R_meas = R_meas[(len(R_meas)-len(t_meas)):]
+    Vr_meas = R_meas[(len(Vr_meas) - len(t_meas)):]
+    theta_meas = R_meas[(len(theta_meas) - len(t_meas)):]
+
     for s in range(len(x_est_top)):
 
         if s == (len(x_est_top) - 1):
@@ -2414,7 +2413,7 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_tru
 
         k0 = x_est_top[s][0]
         v0 = x_est_top[s][1]
-        dR = x_est_top[s][2]
+        dR = 0
         alpha = x_est_top[s][3]
 
         for k in range(len(t)):
@@ -2479,6 +2478,10 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_true_
     Vr_est_err_plot = []
     theta_est_err_plot = []
 
+    R_meas = R_meas[(len(R_meas)-len(t_meas)):]
+    Vr_meas = R_meas[(len(Vr_meas) - len(t_meas)):]
+    theta_meas = R_meas[(len(theta_meas) - len(t_meas)):]
+
     for s in range(len(x_est_top)):
 
         if s == (len(x_est_top) - 1):
@@ -2521,7 +2524,6 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_true_
 
         k0 = x_est_top[s][0]
         v0 = x_est_top[s][1]
-        dR = x_est_top[s][2]
         dR = 0
         alpha = x_est_top[s][3]
 
@@ -2799,7 +2801,9 @@ def func_derivation_bullet(m, d, l, eta, K_inch, K_gran, K_fut, v0, t_pol):
 
 
 # wind accounting
-def func_wind(t_fin, x_fin, v0, alpha, wind_module, wind_direction, az):
+def func_wind(t_fin, x_fin, x_est_start, wind_module, wind_direction, az):
+    v0 = x_est_start[1]
+    alpha = x_est_start[3]
     Aw = np.deg2rad(az) - (np.deg2rad(wind_direction) + np.pi)
     Wz = wind_module * np.sin(Aw)
     z_wind = Wz * (t_fin - x_fin / (v0 / np.cos(alpha)))
