@@ -468,9 +468,12 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                 if q == 0:
                     x_est = x_est_init
                 else:
-                    k0 = x_est_top[-1][0]
-                    dR = x_est_top[-1][2]
-                    x_est = [k0, absV0, dR, alpha0]
+                    if x_est_top == []:
+                        x_est = [k0, absV0, dR, alpha0]
+                    else:
+                        K0 = x_est_top[-1][0]
+                        DR = x_est_top[-1][2]
+                        x_est = [K0, absV0, DR, alpha0]
 
                 for p in range(20):
 
@@ -1829,8 +1832,7 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, window_set, m, g, x_L,
 
 
 # linear piece estimation of measurements
-def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true, h_true, v_true,
-                                 alpha_true, N, m, g, x_L, y_L, h_L):
+def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true, h_true, N, m, g, x_L, y_L, h_L):
     t_meas_plot = []
     x_tr_er_plot = []
     h_tr_er_plot = []
@@ -1848,8 +1850,6 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_tru
 
     x_0 = x_true[-1]
     h_0 = h_true[-1]
-    v0 = v_true[-1]
-    alpha = alpha_true[-1]
 
     for s in range(len(x_est_top)):
 
@@ -1965,8 +1965,7 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_tru
            Ah_true_er_plot
 
 
-def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true, h_true, v_true,
-                               alpha_true, N, m, g, x_L, y_L, h_L):
+def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true, h_true, N, m, g, x_L, y_L, h_L):
     t_meas_plot = []
     x_tr_er_plot = []
     h_tr_er_plot = []
@@ -1983,14 +1982,11 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true,
 
     x_0 = x_true[-1]
     h_0 = h_true[-1]
-    v0 = v_true[-1]
-    alpha = alpha_true[-1]
 
     for s in range(len(x_est_top)):
 
         k0 = x_est_top[s][0]
         v0 = x_est_top[s][1]
-        dR = x_est_top[s][2]
         dR = 0
         alpha = x_est_top[s][3]
 
@@ -2461,7 +2457,7 @@ def func_linear_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_tru
         Vr_est_err_plot.append(Vr_est_err)
         theta_est_err_plot.append(theta_est_err)
 
-    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot
+    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
 
 
 # quad piece estimation error
@@ -2482,8 +2478,8 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_true_
     theta_est_err_plot = []
 
     R_meas = R_meas[(len(R_meas)-len(t_meas)):]
-    Vr_meas = R_meas[(len(Vr_meas) - len(t_meas)):]
-    theta_meas = R_meas[(len(theta_meas) - len(t_meas)):]
+    Vr_meas = Vr_meas[(len(Vr_meas) - len(t_meas)):]
+    theta_meas = theta_meas[(len(theta_meas) - len(t_meas)):]
 
     for s in range(len(x_est_top)):
 
@@ -2580,7 +2576,7 @@ def func_quad_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_true_
         Vr_est_err_plot.append(Vr_est_err)
         theta_est_err_plot.append(theta_est_err)
 
-    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot
+    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
 
 
 def func_std_error_meas(track_meas, R_est_err_plot, Vr_est_err_plot,
