@@ -398,9 +398,8 @@ def process_measurements(data, config):
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_linear_piece_estimation(
-                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start
-                N,
-                config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start, N,
+                    config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
@@ -596,9 +595,8 @@ def process_measurements(data, config):
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
-                    xhy_0_set, x_est_fin, window_set, t_meas_start, x_true_start, h_true_start
-                N,
-                config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+                    xhy_0_set, x_est_fin, window_set, t_meas_start, x_true_start, h_true_start, N,
+                    config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
@@ -775,9 +773,9 @@ def process_measurements(data, config):
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
-                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start
-                N,
-                config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
+                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start,
+                    N,
+                    config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
                 alpha_true_fin, A_abs_true_fin, Ax_true_fin, Ah_true_fin = func_trajectory_end(Cx, r, rho_0, M, R, T,
@@ -1061,7 +1059,6 @@ def process_measurements(data, config):
                     R_est_err_1.append(R_est_err_2[i])
                     Vr_est_err_1.append(Vr_est_err_2[i])
                     theta_est_err_1.append(theta_est_err_2[i])
-
 
                 track_meas, sko_R_meas, sko_Vr_meas, sko_theta_meas = func_std_error_meas(track_meas,
                                                                                           R_est_err_1,
