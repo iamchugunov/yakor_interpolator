@@ -2783,7 +2783,9 @@ def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, Vx_tr_er_1, 
 
 
 # derivation for casings
-def func_derivation(K1, K2, x_fin, v0, alpha):
+def func_derivation(K1, K2, x_fin, x_est_start):
+    v0 = x_est_start[1]
+    alpha = x_est_start[3]
     z_deriv = (K1 + K2 * x_fin) * v0 ** 2 * np.sin(alpha) ** 2
     return z_deriv
 
