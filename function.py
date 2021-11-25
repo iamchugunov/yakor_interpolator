@@ -1102,9 +1102,12 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                 if q == 0:
                     x_est = x_est_init
                 else:
-                    k0 = x_est_top[-1][0]
-                    dR = x_est_top[-1][2]
-                    x_est = [k0, absV0, dR, alpha0]
+                    if x_est_top == []:
+                        x_est = [k0, absV0, dR, alpha0]
+                    else:
+                        K0 = x_est_top[-1][0]
+                        DR = x_est_top[-1][2]
+                        x_est = [K0, absV0, DR, alpha0]
 
                 for p in range(20):  # 30 - сколько времени 158с - поменять на 15 посмотреть различие
 
