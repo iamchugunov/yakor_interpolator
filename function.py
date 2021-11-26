@@ -1832,7 +1832,7 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, window_set, m, g, x_L,
 
 
 # linear piece estimation of measurements
-def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true, h_true, N, m, g, x_L, y_L, h_L):
+def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_start, h_start, vx_start, vh_start, N, m, g, x_L, y_L, h_L):
     t_meas_plot = []
     x_tr_er_plot = []
     h_tr_er_plot = []
@@ -1848,8 +1848,10 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_tru
     Ax_true_er_plot = []
     Ah_true_er_plot = []
 
-    x_0 = x_true[-1]
-    h_0 = h_true[-1]
+    x_0 = x_start[-1]
+    h_0 = h_start[-1]
+    vx_0 = vx_start[-1]
+    vh_0 = vh_start[-1]
 
     for s in range(len(x_est_top)):
 
@@ -1935,6 +1937,15 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_tru
         x_0 = x_tr_er[-1]
         h_0 = h_tr_er[-1]
 
+        delta_Vx = vx_0 - Vx_true_er[0]
+        #delta_Vh = vh_0 - Vh_true_er[0]
+
+        Vx_true_er = Vx_true_er + delta_Vx
+        #Vh_true_er = Vh_true_er + delta_Vh
+
+        vx_0 = Vx_true_er[-1]
+        #vh_0 = Vh_true_er[-1]
+
         for k in range(len(t)):
             if k < len(t) - 1:
                 Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
@@ -1965,7 +1976,7 @@ def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_tru
            Ah_true_er_plot
 
 
-def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true, h_true, N, m, g, x_L, y_L, h_L):
+def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_start, h_start, vx_start, vh_start, N, m, g, x_L, y_L, h_L):
     t_meas_plot = []
     x_tr_er_plot = []
     h_tr_er_plot = []
@@ -1980,8 +1991,12 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true,
     Ax_true_er_plot = []
     Ah_true_er_plot = []
 
-    x_0 = x_true[-1]
-    h_0 = h_true[-1]
+    x_0 = x_start[-1]
+    h_0 = h_start[-1]
+
+    if vx_start != 0 and vh_start != 0:
+        vx_0 = vx_start[-1]
+        vh_0 = vh_start[-1]
 
     for s in range(len(x_est_top)):
 
@@ -2077,13 +2092,27 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true,
                                     np.sqrt(m * g * k0) + k0 * v0 * np.sin(
                                 alpha) * np.tan(np.sqrt((k0 * g) / m) * t[k]))
 
-            V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
-            alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
+        if vx_start == 0 and vh_start == 0 and s == 0:
+            vx_0 = Vx_true_er[0]
+            #vh_0 = Vh_true_er[0]
 
         x_0 = x_tr_er[-1]
         h_0 = h_tr_er[-1]
 
+        delta_Vx = vx_0 - Vx_true_er[0]
+        #delta_Vh = vh_0 - Vh_true_er[0]
+
+        Vx_true_er = Vx_true_er + delta_Vx
+        #Vh_true_er = Vh_true_er + delta_Vh
+
+        vx_0 = Vx_true_er[-1]
+        #vh_0 = Vh_true_er[-1]
+
         for k in range(len(t)):
+
+            V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
+            alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
+
             if k < len(t) - 1:
                 Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
                 Ah_true_er[k] = (Vh_true_er[k + 1] - Vh_true_er[k]) / (t[k + 1] - t[k])
@@ -2111,6 +2140,7 @@ def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_true,
            Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
            Ah_true_er_plot
 
+#
 
 # inital trajectory section assessment - inital start speed
 def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas, window_set, N):
@@ -2320,8 +2350,8 @@ def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_e
 
         else:
 
-            mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_end[k - 1] / (R * T)))) / m
-            # mu_k[k] = 0.5 * Cx * (np.pi * r ** 2) * rho_0 / m
+            #mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_end[k - 1] / (R * T)))) / m
+            mu_k[k] = 0.5 * Cx * (np.pi * r ** 2) * rho_0 / m
             Vx_true_end[k] = Vx_true_end[k - 1] + (
                     -mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vx_true_end[k - 1]) * \
                              (t[k] - t[k - 1])

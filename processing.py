@@ -11,7 +11,7 @@ from function import length_winlen, func_linear_piece_app, func_linear_piece_est
     func_quad_piece_estimation_error, func_std_error_meas, \
     func_trajectory_start, func_quad_piece_estimation_start, func_trajectory_end, \
     func_linear_piece_estimation_start, func_linear_piece_app_start, func_quad_piece_app_start, \
-    func_active_reactive_trajectory, func_emissions_theta, func_trajectory_start_react, func_angle_smoother, \
+    func_active_reactive_trajectory, func_emissions_theta, func_angle_smoother, \
     func_coord_smoother
 
 
@@ -179,7 +179,7 @@ def process_measurements(data, config):
                 Nend = 15000
 
                 # bullet_type = 1
-                Cx = 0.38
+                Cx = 0.38 # 0.38
                 r = 0.00545 / 2
 
                 if config.bullet_type == 2:
@@ -227,7 +227,7 @@ def process_measurements(data, config):
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
-                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start, N,
+                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start, Vx_true_start, Vh_true_start, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
@@ -398,7 +398,7 @@ def process_measurements(data, config):
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_linear_piece_estimation(
-                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start, N,
+                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start, Vx_true_start, Vh_true_start, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
@@ -595,7 +595,7 @@ def process_measurements(data, config):
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
-                    xhy_0_set, x_est_fin, window_set, t_meas_start, x_true_start, h_true_start, N,
+                    xhy_0_set, x_est_fin, window_set, t_meas_start, x_true_start, h_true_start, Vx_true_start, Vh_true_start, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
@@ -773,7 +773,7 @@ def process_measurements(data, config):
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
-                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start,
+                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start, Vx_true_start, Vh_true_start,
                     N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
@@ -983,7 +983,7 @@ def process_measurements(data, config):
                 t_meas_plot_1, x_tr_er_plot_1, h_tr_er_plot_1, R_est_full_plot_1, Vr_est_full_plot_1, \
                 theta_est_full_plot_1, Vx_true_er_plot_1, Vh_true_er_plot_1, V_abs_full_plot_1, alpha_tr_er_plot_1, \
                 A_abs_est_plot_1, Ax_true_er_plot_1, Ah_true_er_plot_1 = func_quad_piece_estimation(
-                    xhy_0_set_1, x_est_fin_1, window_set_1, t_meas_1, x_true_start, h_true_start, N,
+                    xhy_0_set_1, x_est_fin_1, window_set_1, t_meas_1, x_true_start, h_true_start, Vx_true_start, Vh_true_start, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 xhy_0_set_2, x_est_fin_2, window_set_2, t_meas_2, R_meas_2_filter, \
@@ -1001,7 +1001,7 @@ def process_measurements(data, config):
                 t_meas_plot_2, x_tr_er_plot_2, h_tr_er_plot_2, R_est_full_plot_2, Vr_est_full_plot_2, \
                 theta_est_full_plot_2, Vx_true_er_plot_2, Vh_true_er_plot_2, V_abs_full_plot_2, alpha_tr_er_plot_2, \
                 A_abs_est_plot_2, Ax_true_er_plot_2, Ah_true_er_plot_2 = func_quad_piece_estimation(
-                    xhy_0_set_2, x_est_fin_2, window_set_2, t_meas_2, xhy_0_set_2[0][0], xhy_0_set_2[0][1], N,
+                    xhy_0_set_2, x_est_fin_2, window_set_2, t_meas_2, xhy_0_set_2[0][0], xhy_0_set_2[0][1], 0, 0, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 t_tr_act_est, x_tr_act_est, h_tr_act_est, R_tr_act_est, Vr_tr_act_est, theta_tr_act_est, Vx_tr_act_est, \
@@ -1245,7 +1245,7 @@ def process_measurements(data, config):
                 t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
                 Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
                 Ah_true_er_plot = func_quad_piece_estimation(
-                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start, N,
+                    xhy_0_set, x_est_fin, window_set, t_meas, x_true_start, h_true_start, Vx_true_start, Vh_true_start, N,
                     config.m, g, config.loc_X, config.loc_Y, config.loc_Z)
 
                 t_fin, x_true_fin, h_true_fin, R_true_fin, Vr_true_fin, theta_true_fin, Vx_true_fin, Vh_true_fin, V_abs_true_fin, \
