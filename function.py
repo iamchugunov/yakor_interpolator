@@ -2,6 +2,9 @@ import numpy as np
 import ctypes
 import traceback
 from cmath import sqrt
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+from scipy import interpolate
 import math
 
 import time, sys
@@ -85,14 +88,14 @@ def length_winlen(Ndlen):
         winlen = 10
         step_sld = 5
     if Ndlen > 100 and Ndlen <= 150:
-        winlen = 20
-        step_sld = 10
+        winlen = 20  # 20
+        step_sld = 10  # 10
     if Ndlen > 150 and Ndlen <= 250:
-        winlen = 30
-        step_sld = 10
+        winlen = 50
+        step_sld = 25
     if Ndlen > 250:
-        winlen = 40
-        step_sld = 10
+        winlen = 100
+        step_sld = 50
 
     return winlen, step_sld
 
@@ -137,7 +140,7 @@ def kalman_filter_xV(x_est_prev, D_x_prev, y_meas, T, ksi_Vr, Vr_n1, Vr_n2):
 
 
 # angular (theta) smoother filtering
-def func_angle_smoother(theta_meas, t_meas, delta):
+def func_angle_smoother(theta_meas, t_meas, delta, sigma_ksi, sigma_n):
     # Rauch-Thug-Striebel algorithm
 
     x_est_prev = np.array([theta_meas[0], delta])
@@ -150,12 +153,12 @@ def func_angle_smoother(theta_meas, t_meas, delta):
     dx_ext_stor = []
     dT_stor = []
 
-    sigma_ksi = 4e-2
+    # sigma_ksi = 4e-2
     d_ksi = sigma_ksi ** 2
     I = np.eye(2)
 
     H = np.array([1, 0])
-    sigma_n = 5e-4
+    # sigma_n = 5e-4
     Dn = sigma_n ** 2
 
     dT = 0
@@ -206,7 +209,7 @@ def func_angle_smoother(theta_meas, t_meas, delta):
 
 
 # coord (R, Vr) smoother filtering
-def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
+def func_coord_smoother(R_meas, Vr_meas, t_meas, delta, sigma_ksi, sigma_n1, sigma_n2):
     # Rauch-Thug-Striebel algorithm
 
     x_est_prev = np.array([R_meas[0], Vr_meas[0], delta])
@@ -219,13 +222,13 @@ def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
     dx_ext_stor = []
     dT_stor = []
 
-    sigma_ksi = 0.5e1
+    # sigma_ksi = 0.5e1
     d_ksi = sigma_ksi ** 2
     I = np.eye(3)
 
     H = np.array([[1, 0, 0], [0, 1, 0]])
-    sigma_n1 = 0.1e1
-    sigma_n2 = 0.3e0
+    # sigma_n1 = 0.1e1
+    # sigma_n2 = 0.3e0
     Dn = np.array([[sigma_n1 ** 2, 0], [0, sigma_n2 ** 2]])
 
     dT = 0
@@ -277,39 +280,6 @@ def func_coord_smoother(R_meas, Vr_meas, t_meas, delta):
         Vr_filt[i + 1] = x_est_sm[1]
 
     return R_filt[::-1], Vr_filt[::-1]
-
-
-# filtered measuring arrays
-def func_filter_data(t_meas, R_meas, Vr_meas, theta_meas, ksi_Vr, n1, n2, ksi_theta, theta_n1):
-    x_est = np.zeros([len(t_meas), 2])
-    x_est_theta = np.zeros([len(t_meas), 2])
-
-    D_x_est = 0
-    D_x_est_theta = 0
-
-    for k in range(len(t_meas)):
-
-        if k == 0:
-            x_est[k] = [R_meas[k], Vr_meas[k]]
-            x_est_theta[k] = [theta_meas[k], 0.0001]
-            D_x_est = np.array([[1, 0], [0, 1]])
-            D_x_est_theta = np.array([[1, 0], [0, 1]])
-
-        else:
-            x_est[k], D_x_est = kalman_filter_xV(x_est[k - 1], D_x_est, np.array([R_meas[k], Vr_meas[k]]),
-                                                 t_meas[k] - t_meas[k - 1], ksi_Vr, n1,
-                                                 n2)
-
-            x_est_theta[k], D_x_est_theta = kalman_filter_theta(x_est_theta[k - 1], D_x_est_theta,
-                                                                theta_meas[k], t_meas[k] - t_meas[k - 1],
-                                                                ksi_theta,
-                                                                theta_n1)
-
-    R_meas = x_est[:, 0]
-    Vr_meas = x_est[:, 1]
-    theta_meas = x_est_theta[:, 0]
-
-    return R_meas, Vr_meas, theta_meas
 
 
 # exclusion of single emissions from measurements of angle (theta)
@@ -366,7 +336,7 @@ def func_active_reactive(t_meas, R_meas, Vr_meas):
 
 
 # linear piece approximation of measurements
-def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, v0, dR, alpha0, t_meas_full,
+def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
                           R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds):
     try:
         if winlen > 29:
@@ -374,25 +344,35 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
         else:
             Nkol = 5
 
-        h_0_1 = R_meas_full[0] * np.sin(theta_meas_full[0]) + h_L
-        x_0_1 = np.sqrt((R_meas_full[0] * np.cos(theta_meas_full[0])) ** 2 - y_L ** 2) + x_L
+        s = 0
 
-        h_0_2 = R_meas_full[1] * np.sin(theta_meas_full[1]) + h_L
-        x_0_2 = np.sqrt((R_meas_full[1] * np.cos(theta_meas_full[1])) ** 2 - y_L ** 2) + x_L
+        while 1:
 
-        Vx0 = (x_0_2 - x_0_1) / (t_meas_full[1] - t_meas_full[0])
-        Vh0 = (h_0_2 - h_0_1) / (t_meas_full[1] - t_meas_full[0])
+            h_0_1 = R_meas_full[s] * np.sin(theta_meas_full[s]) + h_L
+            x_0_1 = np.sqrt((R_meas_full[s] * np.cos(theta_meas_full[s])) ** 2 - y_L ** 2) + x_L
 
-        absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
-        Alpha0 = np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))
+            h_0_2 = R_meas_full[s + 1] * np.sin(theta_meas_full[s + 1]) + h_L
+            x_0_2 = np.sqrt((R_meas_full[s + 1] * np.cos(theta_meas_full[s + 1])) ** 2 - y_L ** 2) + x_L
 
-        if Alpha0 < 0:
-            Alpha0 = alpha0
+            Vx0 = (x_0_2 - x_0_1) / (t_meas_full[s + 1] - t_meas_full[s])
+            Vh0 = (h_0_2 - h_0_1) / (t_meas_full[s + 1] - t_meas_full[s])
 
-        if v0 - absV0 > 200:
-            absV0 = v0
+            absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+            alpha0 = np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))
 
-        x_est_init = [k0, absV0, dR, Alpha0]
+            if alpha0 < 0 or absV0 < 0:
+                s = s + 1
+            else:
+                break
+
+        t_meas_full = t_meas_full[s:]
+        R_meas_full = R_meas_full[s:]
+        Vr_meas_full = Vr_meas_full[s:]
+        theta_meas_full = theta_meas_full[s:]
+
+        percent_done = 100
+
+        x_est_init = [k0, absV0, dR, alpha0]
 
         u = 0
 
@@ -407,19 +387,15 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
             lb = WindowSet[u - 1][0] + step_sld
             rb = WindowSet[u - 1][1] + step_sld
             if rb > len(t_meas_full):
+                WindowSet.append([lb, len(t_meas_full)])
                 break
             else:
                 WindowSet.append([lb, rb])
                 u = u + 1
 
-        if len(WindowSet) > 3:
-            WindowSet[3:] = []
-
-        meas_t_ind = []
         x_est_top = []
         xhy_0_set = []
         window_set = []
-        meas_t = []
 
         NoW = np.fix(len(t_meas_full) / winlen)
         if (len(t_meas_full) - NoW * winlen) > Nkol:
@@ -428,68 +404,81 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
 
         start_time = time.process_time()
 
-        for w in range(NoW):
+        t_meas_t = t_meas_full
+        R_meas_t = R_meas_full
+        theta_meas_t = theta_meas_full
+        Vr_meas_t = Vr_meas_full
 
-            percent = float(w) / NoW
+        for q in range(len(WindowSet)):
+
+            percent = float(q) / len(WindowSet)
             hashes = '#' * int(round(percent * 20))
             spaces = ' ' * (20 - len(hashes))
             sys.stdout.write(
-                "\rlinear piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
-                                                                                                int(round(
-                                                                                                    percent * 100)),
-                                                                                                (
-                                                                                                        time.process_time() - start_time)))
+                "\rquad piece approximation of measurements %: [{0}] {1}% {2} seconds".format(hashes + spaces,
+                                                                                              int(round(
+                                                                                                  percent * percent_done)),
+                                                                                              (
+                                                                                                      time.process_time() - start_time)))
             sys.stdout.flush()
 
-            if w == 0:
+            for w in range(NoW):
 
-                meas_t = [i for i in range(len(t_meas_full))]
-                meas_t_ind.append(meas_t)
-                t_meas_t = t_meas_full
-                R_meas_t = R_meas_full
-                theta_meas_t = theta_meas_full
-                Vr_meas_t = Vr_meas_full
+                if q == len(WindowSet):
 
-            else:
+                    t_meas = t_meas_t[WindowSet[q][0] - 1 + w:]
+                    R_meas = R_meas_t[WindowSet[q][0] - 1 + w:]
+                    theta_meas = theta_meas_t[WindowSet[q][0] - 1 + w:]
+                    Vr_meas = Vr_meas_t[WindowSet[q][0] - 1 + w:]
 
-                meas_t_ind.append(meas_t[window_set[w - 1][1] - 1 + meas_t_ind[w - 1][0]:])
-                t_meas_t = t_meas_full[meas_t_ind[w][0]:]
-                R_meas_t = R_meas_full[meas_t_ind[w][0]:]
-                theta_meas_t = theta_meas_full[meas_t_ind[w][0]:]
-                Vr_meas_t = Vr_meas_full[meas_t_ind[w][0]:]
+                    t_meas = t_meas - t_meas[0]
 
-            for q in range(len(WindowSet)):
+                    h_0 = R_meas[0] * np.sin(theta_meas[0]) + h_L
+                    x_0 = np.sqrt((R_meas[0] * np.cos(theta_meas[0])) ** 2 - y_L ** 2) + x_L
 
-                t_meas = t_meas_t[WindowSet[q][0] - 1: WindowSet[q][1]]
+                    xhy_0 = [x_0, h_0, y_0]
 
-                if q != (len(WindowSet) - 1):
-                    if len(t_meas) < (WindowSet[q + 1][0] - 1):
-                        break
+                    h_0_2 = R_meas[1] * np.sin(theta_meas[1]) + h_L
+                    x_0_2 = np.sqrt((R_meas[1] * np.cos(theta_meas[1])) ** 2 - y_L ** 2) + x_L
 
-                R_meas = R_meas_t[WindowSet[q][0] - 1: WindowSet[q][1]]
-                theta_meas = theta_meas_t[WindowSet[q][0] - 1: WindowSet[q][1]]
-                Vr_meas = Vr_meas_t[WindowSet[q][0] - 1: WindowSet[q][1]]
+                    Vx0 = (x_0_2 - x_0) / (t_meas[1] - t_meas[0])
+                    Vh0 = (h_0_2 - h_0) / (t_meas[1] - t_meas[0])
+                    absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+                    alpha0 = np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))
 
-                t_meas = t_meas - t_meas[0]
+                else:
 
-                h_0 = R_meas[0] * np.sin(theta_meas[0]) + h_L
-                x_0 = np.sqrt((R_meas[0] * np.cos(theta_meas[0])) ** 2 - y_L ** 2) + x_L
+                    t_meas = t_meas_t[WindowSet[q][0] - 1 + w: WindowSet[q][1] + w]
+                    R_meas = R_meas_t[WindowSet[q][0] - 1 + w: WindowSet[q][1] + w]
+                    theta_meas = theta_meas_t[WindowSet[q][0] - 1 + w: WindowSet[q][1] + w]
+                    Vr_meas = Vr_meas_t[WindowSet[q][0] - 1 + w: WindowSet[q][1] + w]
 
-                xhy_0 = [x_0, h_0, y_0]
+                    t_meas = t_meas - t_meas[0]
 
-                h_0_2 = R_meas[1] * np.sin(theta_meas[1]) + h_L
-                x_0_2 = np.sqrt((R_meas[1] * np.cos(theta_meas[1])) ** 2 - y_L ** 2) + x_L
+                    h_0 = R_meas[0] * np.sin(theta_meas[0]) + h_L
+                    x_0 = np.sqrt((R_meas[0] * np.cos(theta_meas[0])) ** 2 - y_L ** 2) + x_L
 
-                Vx0 = (x_0_2 - x_0) / (t_meas[1] - t_meas[0])
-                Vh0 = (h_0_2 - h_0) / (t_meas[1] - t_meas[0])
-                absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+                    xhy_0 = [x_0, h_0, y_0]
 
-                if w == 0 and q == 0:
+                    h_0_2 = R_meas[1] * np.sin(theta_meas[1]) + h_L
+                    x_0_2 = np.sqrt((R_meas[1] * np.cos(theta_meas[1])) ** 2 - y_L ** 2) + x_L
+
+                    Vx0 = (x_0_2 - x_0) / (t_meas[1] - t_meas[0])
+                    Vh0 = (h_0_2 - h_0) / (t_meas[1] - t_meas[0])
+                    absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+                    alpha0 = np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))
+
+                if q == 0:
                     x_est = x_est_init
                 else:
-                    x_est = [k0, absV0, dR, np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))]
+                    if x_est_top == []:
+                        x_est = [k0, absV0, dR, alpha0]
+                    else:
+                        K0 = x_est_top[-1][0]
+                        DR = x_est_top[-1][2]
+                        x_est = [K0, absV0, DR, alpha0]
 
-                for p in range(30):
+                for p in range(20):
 
                     d = np.zeros(4)
                     dd = np.zeros((4, 4))
@@ -728,27 +717,28 @@ def func_linear_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0
                                                                                                         time.process_time() - start_time)))
             sys.stdout.flush()
 
-        return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
+        return xhy_0_set, x_est_top, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
 
     except IndexError:
         print("linear piece approximation of measurements error")
 
 
 # linear piece approximation start of measurements
-def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, x_est_start, t_meas_full,
+def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, v0, dR, alpha, t_meas_full,
                                 R_meas_full, Vr_meas_full, theta_meas_full, window_set, parameters_bounds):
     try:
 
-        x_est = x_est_start
+        x_est = [k0, v0, dR, alpha]
+        x_est_start = [k0, v0, dR, alpha]
         x_0 = 0
         h_0 = 0
 
-        t_meas = t_meas_full[0:window_set[0][1]]
-        R_meas = R_meas_full[0:window_set[0][1]]
-        Vr_meas = Vr_meas_full[0:window_set[0][1]]
-        theta_meas = theta_meas_full[0:window_set[0][1]]
+        t_meas = t_meas_full[window_set[0][0] - 1:window_set[0][1]]
+        R_meas = R_meas_full[window_set[0][0] - 1:window_set[0][1]]
+        Vr_meas = Vr_meas_full[window_set[0][0] - 1:window_set[0][1]]
+        theta_meas = theta_meas_full[window_set[0][0] - 1:window_set[0][1]]
 
-        for p in range(30):
+        for p in range(20):
 
             d = np.zeros(4)
             dd = np.zeros((4, 4))
@@ -970,6 +960,8 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
                 x_est = x_est
+            else:
+                x_est = x_est_start
         else:
             x_est = x_est_start
 
@@ -980,7 +972,7 @@ def func_linear_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_the
 
 
 # quad piece approximation start of measurements
-def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, v0, dR, alpha0, t_meas_full,
+def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, dR, t_meas_full,
                         R_meas_full, Vr_meas_full, theta_meas_full, winlen, step_sld, parameters_bounds, types):
     try:
         if winlen > 29:
@@ -988,35 +980,38 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
         else:
             Nkol = 5
 
+        s = 0
 
-        h_0_1 = R_meas_full[0] * np.sin(theta_meas_full[0]) + h_L
-        x_0_1 = np.sqrt((R_meas_full[0] * np.cos(theta_meas_full[0])) ** 2 - y_L ** 2) + x_L
+        while 1:
 
-        h_0_2 = R_meas_full[1] * np.sin(theta_meas_full[1]) + h_L
-        x_0_2 = np.sqrt((R_meas_full[1] * np.cos(theta_meas_full[1])) ** 2 - y_L ** 2) + x_L
+            h_0_1 = R_meas_full[s] * np.sin(theta_meas_full[s]) + h_L
+            x_0_1 = np.sqrt((R_meas_full[s] * np.cos(theta_meas_full[s])) ** 2 - y_L ** 2) + x_L
 
-        Vx0 = (x_0_2 - x_0_1) / (t_meas_full[1] - t_meas_full[0])
-        Vh0 = (h_0_2 - h_0_1) / (t_meas_full[1] - t_meas_full[0])
+            h_0_2 = R_meas_full[s + 1] * np.sin(theta_meas_full[s + 1]) + h_L
+            x_0_2 = np.sqrt((R_meas_full[s + 1] * np.cos(theta_meas_full[s + 1])) ** 2 - y_L ** 2) + x_L
 
-        absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
-        Alpha0 = np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))
+            Vx0 = (x_0_2 - x_0_1) / (t_meas_full[s + 1] - t_meas_full[s])
+            Vh0 = (h_0_2 - h_0_1) / (t_meas_full[s + 1] - t_meas_full[s])
+
+            absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+            alpha0 = np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))
+
+            if alpha0 < 0 or absV0 < 0:
+                s = s + 1
+            else:
+                break
+
+        t_meas_full = t_meas_full[s:]
+        R_meas_full = R_meas_full[s:]
+        Vr_meas_full = Vr_meas_full[s:]
+        theta_meas_full = theta_meas_full[s:]
 
         percent_done = 100
-
-        if Alpha0 < 0:
-            Alpha0 = alpha0
-        if v0 - absV0 > 200:
-            absV0 = v0
-
         if types == 1:
-
             # act-react
             percent_done = 50
 
-            absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
-            Alpha0 = np.arctan((h_0_2 - h_0_1) / (x_0_2 - x_0_1))
-
-        x_est_init = [k0, absV0, dR, Alpha0]
+        x_est_init = [k0, absV0, dR, alpha0]
 
         u = 0
 
@@ -1031,32 +1026,31 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
             lb = WindowSet[u - 1][0] + step_sld
             rb = WindowSet[u - 1][1] + step_sld
             if rb > len(t_meas_full):
+                WindowSet.append([lb, len(t_meas_full)])
                 break
             else:
                 WindowSet.append([lb, rb])
                 u = u + 1
 
-        if len(WindowSet) > 3:
-            WindowSet[3:] = []
-
-        meas_t_ind = []
         x_est_top = []
         xhy_0_set = []
         window_set = []
-        meas_t = []
 
         NoW = np.fix(len(t_meas_full) / winlen)
-
         if (len(t_meas_full) - NoW * winlen) > Nkol:
             NoW = NoW + 1
         NoW = int(NoW)
 
         start_time = time.process_time()
 
+        t_meas_t = t_meas_full
+        R_meas_t = R_meas_full
+        theta_meas_t = theta_meas_full
+        Vr_meas_t = Vr_meas_full
 
-        for w in range(NoW):
+        for q in range(len(WindowSet)):
 
-            percent = float(w) / NoW
+            percent = float(q) / len(WindowSet)
             hashes = '#' * int(round(percent * 20))
             spaces = ' ' * (20 - len(hashes))
             sys.stdout.write(
@@ -1067,56 +1061,63 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                                                                                                       time.process_time() - start_time)))
             sys.stdout.flush()
 
-            if w == 0:
+            for w in range(NoW):
 
-                meas_t = [i for i in range(len(t_meas_full))]
-                meas_t_ind.append(meas_t)
-                t_meas_t = t_meas_full
-                R_meas_t = R_meas_full
-                theta_meas_t = theta_meas_full
-                Vr_meas_t = Vr_meas_full
+                if q == len(WindowSet):
 
-            else:
+                    t_meas = t_meas_t[WindowSet[q][0] - 1 + w:]
+                    R_meas = R_meas_t[WindowSet[q][0] - 1 + w:]
+                    theta_meas = theta_meas_t[WindowSet[q][0] - 1 + w:]
+                    Vr_meas = Vr_meas_t[WindowSet[q][0] - 1 + w:]
 
-                meas_t_ind.append(meas_t[window_set[w - 1][1] - 1 + meas_t_ind[w - 1][0]:])
-                t_meas_t = t_meas_full[meas_t_ind[w][0]:]
-                R_meas_t = R_meas_full[meas_t_ind[w][0]:]
-                theta_meas_t = theta_meas_full[meas_t_ind[w][0]:]
-                Vr_meas_t = Vr_meas_full[meas_t_ind[w][0]:]
+                    t_meas = t_meas - t_meas[0]
 
-            for q in range(len(WindowSet)):
+                    h_0 = R_meas[0] * np.sin(theta_meas[0]) + h_L
+                    x_0 = np.sqrt((R_meas[0] * np.cos(theta_meas[0])) ** 2 - y_L ** 2) + x_L
 
-                t_meas = t_meas_t[WindowSet[q][0] - 1: WindowSet[q][1]]
+                    xhy_0 = [x_0, h_0, y_0]
 
-                if q != (len(WindowSet) - 1):
-                    if len(t_meas) < (WindowSet[q + 1][0] - 1):
-                        break
+                    h_0_2 = R_meas[1] * np.sin(theta_meas[1]) + h_L
+                    x_0_2 = np.sqrt((R_meas[1] * np.cos(theta_meas[1])) ** 2 - y_L ** 2) + x_L
 
-                R_meas = R_meas_t[WindowSet[q][0] - 1: WindowSet[q][1]]
-                theta_meas = theta_meas_t[WindowSet[q][0] - 1: WindowSet[q][1]]
-                Vr_meas = Vr_meas_t[WindowSet[q][0] - 1: WindowSet[q][1]]
+                    Vx0 = (x_0_2 - x_0) / (t_meas[1] - t_meas[0])
+                    Vh0 = (h_0_2 - h_0) / (t_meas[1] - t_meas[0])
+                    absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+                    alpha0 = np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))
 
-                t_meas = t_meas - t_meas[0]
+                else:
 
-                h_0 = R_meas[0] * np.sin(theta_meas[0]) + h_L
-                x_0 = np.sqrt((R_meas[0] * np.cos(theta_meas[0])) ** 2 - y_L ** 2) + x_L
+                    t_meas = t_meas_t[WindowSet[q][0] - 1 + w: WindowSet[q][1] + w]
+                    R_meas = R_meas_t[WindowSet[q][0] - 1 + w: WindowSet[q][1] + w]
+                    theta_meas = theta_meas_t[WindowSet[q][0] - 1 + w: WindowSet[q][1] + w]
+                    Vr_meas = Vr_meas_t[WindowSet[q][0] - 1 + w: WindowSet[q][1] + w]
 
-                xhy_0 = [x_0, h_0, y_0]
+                    t_meas = t_meas - t_meas[0]
 
-                h_0_2 = R_meas[1] * np.sin(theta_meas[1]) + h_L
-                x_0_2 = np.sqrt((R_meas[1] * np.cos(theta_meas[1])) ** 2 - y_L ** 2) + x_L
+                    h_0 = R_meas[0] * np.sin(theta_meas[0]) + h_L
+                    x_0 = np.sqrt((R_meas[0] * np.cos(theta_meas[0])) ** 2 - y_L ** 2) + x_L
 
-                Vx0 = (x_0_2.real - x_0.real) / (t_meas[1] - t_meas[0])
-                Vh0 = (h_0_2 - h_0) / (t_meas[1] - t_meas[0])
-                absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
-                Alpha0 = np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))
+                    xhy_0 = [x_0, h_0, y_0]
 
-                if w == 0 and q == 0:
+                    h_0_2 = R_meas[1] * np.sin(theta_meas[1]) + h_L
+                    x_0_2 = np.sqrt((R_meas[1] * np.cos(theta_meas[1])) ** 2 - y_L ** 2) + x_L
+
+                    Vx0 = (x_0_2 - x_0) / (t_meas[1] - t_meas[0])
+                    Vh0 = (h_0_2 - h_0) / (t_meas[1] - t_meas[0])
+                    absV0 = np.sqrt(Vx0 ** 2 + Vh0 ** 2)
+                    alpha0 = np.arctan((h_0_2 - h_0) / (x_0_2 - x_0))
+
+                if q == 0:
                     x_est = x_est_init
                 else:
-                    x_est = [k0, absV0, dR, Alpha0]
+                    if x_est_top == []:
+                        x_est = [k0, absV0, dR, alpha0]
+                    else:
+                        K0 = x_est_top[-1][0]
+                        DR = x_est_top[-1][2]
+                        x_est = [K0, absV0, DR, alpha0]
 
-                for p in range(30):
+                for p in range(20):  # 30 - сколько времени 158с - поменять на 15 посмотреть различие
 
                     d = np.zeros(4)
                     dd = np.zeros((4, 4))
@@ -1353,10 +1354,10 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                             (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
                         xhy_0_set.append(xhy_0)
                         x_est_top.append(x_est)
-                        window_set.append(WindowSet[q])
+                        window_set.append(list(np.array(WindowSet[q]) + w))
                         break
 
-            percent = float(NoW) / NoW
+            percent = float(len(WindowSet)) / len(WindowSet)
             hashes = '#' * int(round(percent * 20))
             spaces = ' ' * (20 - len(hashes))
             sys.stdout.write(
@@ -1367,27 +1368,28 @@ def func_quad_piece_app(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, 
                                                                                                       time.process_time() - start_time)))
             sys.stdout.flush()
 
-        return xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
+        return xhy_0_set, x_est_top, window_set, t_meas_full, R_meas_full, Vr_meas_full, theta_meas_full
 
     except IndexError:
         print("quad piece approximation of measurements error")
 
 
 # quad piece approximation start of measurements
-def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, x_est_start, t_meas_full,
+def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta, k0, v0, dR, alpha, t_meas_full,
                               R_meas_full, Vr_meas_full, theta_meas_full, window_set, parameters_bounds):
     try:
 
-        x_est = x_est_start
+        x_est = [k0, v0, dR, alpha]
+        x_est_start = [k0, v0, dR, alpha]
         x_0 = 0
         h_0 = 0
 
-        t_meas = t_meas_full[0:window_set[0][1]]
-        R_meas = R_meas_full[0:window_set[0][1]]
-        Vr_meas = Vr_meas_full[0:window_set[0][1]]
-        theta_meas = theta_meas_full[0:window_set[0][1]]
+        t_meas = t_meas_full[window_set[0][0] - 1:window_set[0][1]]
+        R_meas = R_meas_full[window_set[0][0] - 1:window_set[0][1]]
+        Vr_meas = Vr_meas_full[window_set[0][0] - 1:window_set[0][1]]
+        theta_meas = theta_meas_full[window_set[0][0] - 1:window_set[0][1]]
 
-        for p in range(30):
+        for p in range(20):
 
             d = np.zeros(4)
             dd = np.zeros((4, 4))
@@ -1621,10 +1623,6 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
                     (x_est[2] > parameters_bounds[2][0] and x_est[2] < parameters_bounds[2][1]) and
                     (x_est[3] > parameters_bounds[3][0] and x_est[3] < parameters_bounds[3][1])):
                 x_est = x_est
-                if x_est[1] > x_est_start[1]:
-                    x_est = x_est
-                else:
-                    x_est = x_est_start
             else:
                 x_est = x_est_start
         else:
@@ -1636,789 +1634,18 @@ def func_quad_piece_app_start(x_L, y_L, h_L, y_0, m, g, SKO_R, SKO_Vr, SKO_theta
         print("quad piece approximation start of measurements")
 
 
-# linear piece estimation of measurements
-def func_linear_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, N, m, g, x_L, y_L, h_L):
-    t_meas_plot = []
-    x_tr_er_plot = []
-    h_tr_er_plot = []
-    R_est_full_plot = []
-    Vr_est_full_plot = []
-    theta_est_full_plot = []
-    Vx_true_er_plot = []
-    Vh_true_er_plot = []
-    V_abs_est_plot = []
-
-    alpha_tr_er_plot = []
-    A_abs_est_plot = []
-    Ax_true_er_plot = []
-    Ah_true_er_plot = []
-
-    for s in range(len(x_est_top)):
-
-        x_est_fin = x_est_top[s]
-
-        if s == (len(x_est_top) - 1):
-            tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
-            tmax = t_meas[-1]
-            t = []
-            n = 0
-            for i in range(N):
-                if i == 0:
-                    n = 0
-                else:
-                    n += (tmax - tmin) / (N - 1)
-                t.append(n)
-            t = np.array(t)
-
-        if (s > 0) and (s != (len(x_est_top) - 1)):
-            tmin = t_meas[meas_t_ind[s - 1][window_set[s - 1][1] - 1]]
-            tmax = t_meas[meas_t_ind[s][window_set[s][1] - 1]]
-            t = []
-            n = 0
-            for i in range(N):
-                if i == 0:
-                    n = 0
-                else:
-                    n += (tmax - tmin) / (N - 1)
-                t.append(n)
-            t = np.array(t)
-
-        if s == 0:
-            tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
-            tmax = t_meas[meas_t_ind[s][window_set[s][1] - 1]]
-            t = []
-            n = 0
-            for i in range(N):
-                if i == 0:
-                    n = 0
-                else:
-                    n += (tmax - tmin) / (N - 1)
-                t.append(n)
-            t = np.array(t)
-
-        t_meas_plot.append(t + tmin)
-
-        x_0 = xhy_0_set[s][0]
-        h_0 = xhy_0_set[s][1]
-
-        x_tr_er = np.zeros(len(t))
-        h_tr_er = np.zeros(len(t))
-        R_est_full = np.zeros(len(t))
-        theta_est_full = np.zeros(len(t))
-        Vr_est_full = np.zeros(len(t))
-        V_abs_est = np.zeros(len(t))
-        Vx_true_er = np.zeros(len(t))
-        Vh_true_er = np.zeros(len(t))
-
-        alpha_tr_er = np.zeros(len(t))
-        A_abs_est = np.zeros(len(t))
-        Ax_true_er = np.zeros(len(t))
-        Ah_true_er = np.zeros(len(t))
-
-        k0 = x_est_fin[0]
-        v0 = x_est_fin[1]
-        dR = x_est_fin[2]
-        alpha = x_est_fin[3]
-
-        for k in range(len(t)):
-            x_tr_er[k] = x_0 + (m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m))
-
-            h_tr_er[k] = ((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) * (
-                    1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0)
-
-            Vx_true_er[k] = v0 * np.exp(-k0 * t[k] / m) * np.cos(alpha)
-            Vh_true_er[k] = v0 * np.sin(alpha) * np.exp(-k0 * t[k] / m) - (m * g / k0) * (1 - np.exp(-k0 * t[k] / m))
-
-            R_est_full[k] = np.sqrt(
-                (x_L - ((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0)) ** 2 +
-                y_L ** 2 + (h_L - ((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
-                                   (1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0)) ** 2) + dR
-
-            theta_est_full[k] = np.arctan((((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
-                                            (1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0) - h_L) / np.sqrt(
-                (((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0) - x_L) ** 2 + y_L ** 2))
-
-            Vr_est_full[k] = ((v0 * np.exp(-k0 * t[k] / m) * np.cos(alpha)) *
-                              (((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0) - x_L) +
-                              (v0 * np.sin(alpha) * np.exp(-k0 * t[k] / m) - (m * g / k0) *
-                               (1 - np.exp(-k0 * t[k] / m))) * (((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
-                                                                 (1 - np.exp(-k0 * t[k] / m)) - (
-                                                                         m * g * t[k]) / k0 + h_0) - h_L)) / \
-                             np.sqrt((x_L - ((m / k0) * v0 * np.cos(alpha) *
-                                             (1 - np.exp(-k0 * t[k] / m)) + x_0)) ** 2 + y_L ** 2 + (h_L - ((m / k0) *
-                                                                                                            (
-                                                                                                                    v0 * np.sin(
-                                                                                                                alpha) + (
-                                                                                                                            m * g) / k0) * (
-                                                                                                                    1 - np.exp(
-                                                                                                                -k0 *
-                                                                                                                t[
-                                                                                                                    k] / m)) - (
-                                                                                                                    m * g *
-                                                                                                                    t[
-                                                                                                                        k]) / k0 + h_0)) ** 2)
-
-            V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
-
-            alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
-
-        for k in range(len(t)):
-            if k < len(t) - 1:
-                Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
-                Ah_true_er[k] = (Vh_true_er[k + 1] - Vh_true_er[k]) / (t[k + 1] - t[k])
-                A_abs_est[k] = np.sqrt(Ax_true_er[k] ** 2 + Ah_true_er[k] ** 2)
-
-        A_abs_est[-1] = A_abs_est[-2]
-        Ax_true_er[-1] = Ax_true_er[-2]
-        Ah_true_er[-1] = Ah_true_er[-2]
-
-        x_tr_er_plot.append(x_tr_er)
-        h_tr_er_plot.append(h_tr_er)
-        R_est_full_plot.append(R_est_full)
-        Vr_est_full_plot.append(Vr_est_full)
-        theta_est_full_plot.append(theta_est_full)
-
-        Vx_true_er_plot.append(Vx_true_er)
-        Vh_true_er_plot.append(Vh_true_er)
-        V_abs_est_plot.append(V_abs_est)
-
-        alpha_tr_er_plot.append(alpha_tr_er)
-        A_abs_est_plot.append(A_abs_est)
-        Ax_true_er_plot.append(Ax_true_er)
-        Ah_true_er_plot.append(Ah_true_er)
-
-    return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
-           Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
-           Ah_true_er_plot
-
-
-# quad piece estimation of measurements
-def func_quad_piece_estimation(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, N, m, g, x_L, y_L, h_L):
-    t_meas_plot = []
-    x_tr_er_plot = []
-    h_tr_er_plot = []
-    R_est_full_plot = []
-    Vr_est_full_plot = []
-    Vx_true_er_plot = []
-    Vh_true_er_plot = []
-    theta_est_full_plot = []
-    V_abs_est_plot = []
-
-    alpha_tr_er_plot = []
-    A_abs_est_plot = []
-    Ax_true_er_plot = []
-    Ah_true_er_plot = []
-
-    start_time = time.process_time()
-
-    for s in range(len(x_est_top)):
-        x_est_fin = x_est_top[s]
-
-        if s == (len(x_est_top) - 1):
-            tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
-            tmax = t_meas[-1]
-            t = []
-            n = 0
-            for i in range(N):
-                if i == 0:
-                    n = 0
-                else:
-                    n += (tmax - tmin) / (N - 1)
-                t.append(n)
-            t = np.array(t)
-
-        if (s > 0) and (s != (len(x_est_top) - 1)):
-            tmin = t_meas[meas_t_ind[s - 1][window_set[s - 1][1] - 1]]
-            tmax = t_meas[meas_t_ind[s][window_set[s][1] - 1]]
-            t = []
-            n = 0
-            for i in range(N):
-                if i == 0:
-                    n = 0
-                else:
-                    n += (tmax - tmin) / (N - 1)
-                t.append(n)
-            t = np.array(t)
-
-        if s == 0:
-
-            tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
-            tmax = t_meas[meas_t_ind[s][window_set[s][1] - 1]]
-            t = []
-            n = 0
-            for i in range(N):
-                if i == 0:
-                    n = 0
-                else:
-                    n += (tmax - tmin) / (N - 1)
-                t.append(n)
-            t = np.array(t)
-
-        t_meas_plot.append(t + tmin)
-
-        x_0 = xhy_0_set[s][0].real
-        h_0 = xhy_0_set[s][1].real
-
-        x_tr_er = np.zeros(len(t))
-        h_tr_er = np.zeros(len(t))
-        R_est_full = np.zeros(len(t))
-        theta_est_full = np.zeros(len(t))
-        Vr_est_full = np.zeros(len(t))
-        V_abs_est = np.zeros(len(t))
-        Vx_true_er = np.zeros(len(t))
-        Vh_true_er = np.zeros(len(t))
-
-        alpha_tr_er = np.zeros(len(t))
-        A_abs_est = np.zeros(len(t))
-        Ax_true_er = np.zeros(len(t))
-        Ah_true_er = np.zeros(len(t))
-
-        k0 = x_est_fin[0].real
-        v0 = x_est_fin[1].real
-        dR = x_est_fin[2].real
-        alpha = x_est_fin[3].real
-
-        for k in range(len(t)):
-            x_tr_er[k] = (m / k0) * np.log(
-                1 + (k0 / m) * v0 * t[k] * np.cos(alpha)) + x_0
-
-            h_tr_er[k] = (m / k0) * np.log(
-                np.cos(np.sqrt((k0 * g) / m) * t[k]) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
-                    alpha) * np.sin(np.sqrt((k0 * g) / m) * t[k])) + h_0
-
-            R_est_full[k] = np.sqrt((x_L - (x_0 + (m / k0) * np.log(
-                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L + (
-                                            h_L - (
-                                            h_0 + (m / k0) * np.log(
-                                        np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(
-                                            k0 / (m * g)) * v0 * np.sin(
-                                            alpha) * np.sin(
-                                            t[k] * np.sqrt(k0 * g / m))))) ** 2) + dR
-
-            theta_est_full[k] = np.arctan(((h_0 + (m / k0) * np.log(
-                np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
-                    alpha) * np.sin(t[k] * np.sqrt(k0 * g / m)))) - h_L) / np.sqrt((x_L - (
-                    x_0 + (m / k0) * np.log(
-                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L ** 2))
-
-            Vr_est_full[k] = ((v0 * np.cos(alpha) * ((x_0 + (m / k0) * np.log(
-                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m)) - x_L)) / (1 + (
-                    k0 * t[k] * v0 * np.cos(alpha)) / m) + ((np.sqrt(
-                m * g * k0) * v0 * np.sin(alpha) - m * g * np.tan(
-                np.sqrt(k0 * g / m) * t[k])) / (np.sqrt(m * g * k0) + k0 *
-                                                v0 * np.sin(
-                        alpha) * np.tan(np.sqrt(k0 * g / m) * t[k]))) * (
-                                      (h_0 + (m / k0) * np.log(
-                                          np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
-                                              k0 / (m * g)) * v0 * np.sin(
-                                              alpha) * np.sin(
-                                              np.sqrt(k0 * g / m) * t[k]))) - h_L)) / (
-                                 np.sqrt((x_L - (
-                                         x_0 + (m / k0) * np.log(
-                                     1 + (k0 * v0 * t[k] * np.cos(
-                                         alpha)) / m))) ** 2 + y_L ** 2 + (h_L - (
-                                         h_0 + (m / k0) * np.log(
-                                     np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
-                                         k0 / (m * g)) * v0 * np.sin(
-                                         alpha) * np.sin(
-                                         np.sqrt(k0 * g / m) * t[k])))) ** 2))
-
-            Vx_true_er[k] = (v0 * np.cos(alpha)) / (
-                    1 + k0 * v0 * t[k] * np.cos(alpha) / m)
-
-            Vh_true_er[k] = (np.sqrt(m * g * k0) * v0 * np.sin(
-                alpha) - m * g * np.tan(
-                np.sqrt((k0 * g) / m) * t[k])) / (
-                                    np.sqrt(m * g * k0) + k0 * v0 * np.sin(
-                                alpha) * np.tan(np.sqrt((k0 * g) / m) * t[k]))
-
-            V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
-
-            alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
-
-        for k in range(len(t)):
-            if k < len(t) - 1:
-                Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
-                Ah_true_er[k] = (Vh_true_er[k + 1] - Vh_true_er[k]) / (t[k + 1] - t[k])
-                A_abs_est[k] = np.sqrt(Ax_true_er[k] ** 2 + Ah_true_er[k] ** 2)
-
-        A_abs_est[-1] = A_abs_est[-2]
-        Ax_true_er[-1] = Ax_true_er[-2]
-        Ah_true_er[-1] = Ah_true_er[-2]
-
-        x_tr_er_plot.append(x_tr_er)
-        h_tr_er_plot.append(h_tr_er)
-        R_est_full_plot.append(R_est_full)
-        Vr_est_full_plot.append(Vr_est_full)
-        Vx_true_er_plot.append(Vx_true_er)
-        Vh_true_er_plot.append(Vh_true_er)
-        theta_est_full_plot.append(theta_est_full)
-        V_abs_est_plot.append(V_abs_est)
-
-        alpha_tr_er_plot.append(alpha_tr_er)
-        A_abs_est_plot.append(A_abs_est)
-        Ax_true_er_plot.append(Ax_true_er)
-        Ah_true_er_plot.append(Ah_true_er)
-
-    return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
-           Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
-           Ah_true_er_plot
-
-
-# inital trajectory section assessment - inital start speed
-def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas, N):
-    xhy_0_start = xhy_0_set[0]
-    x_est_start = x_est_top[0]
-
-    k0 = x_est_start[0].real
-    v0 = x_est_start[1].real
-    dR = x_est_start[2].real
-    alpha = x_est_start[3].real
-
-    x_0 = xhy_0_start[0]
-    h_0 = xhy_0_start[1]
-
-    tmin = 0
-    tmax = t_meas[0]
-
-    t = []
-
-    n = 0
-    for i in range(N):
-        if i == 0:
-            n = 0
-        else:
-            n += (tmax - tmin) / (N - 1)
-        t.append(n)
-
-    t = sorted(t, reverse=True)
-
-    mu_k = np.zeros(N)
-    x_true_start = np.zeros(N)
-    h_true_start = np.zeros(N)
-    Vx_true_start = np.zeros(N)
-    Vh_true_start = np.zeros(N)
-    V_abs_true_start = np.zeros(N)
-
-    last_k = -1
-
-    for k in range(N):
-
-        if k == 0:
-            x_true_start[k] = x_0
-            h_true_start[k] = h_0
-            Vx_true_start[k] = v0 * np.cos(alpha)
-            Vh_true_start[k] = v0 * np.sin(alpha)
-            V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
-
-        else:
-            mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_start[k - 1] / (R * T)))) / m
-            Vx_true_start[k] = Vx_true_start[k - 1] - (
-                    -mu_k[k] * np.sqrt(Vx_true_start[k - 1] ** 2 + Vh_true_start[k - 1] ** 2) * Vx_true_start[k - 1]) * \
-                               (t[k - 1] - t[k])
-            Vh_true_start[k] = Vh_true_start[k - 1] - (
-                    -g - mu_k[k] * np.sqrt(Vx_true_start[k - 1] ** 2 + Vh_true_start[k - 1] ** 2) * Vh_true_start[
-                k - 1]) * \
-                               (t[k - 1] - t[k])
-            V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
-            x_true_start[k] = x_true_start[k - 1] - Vx_true_start[k] * (t[k - 1] - t[k])
-            h_true_start[k] = h_true_start[k - 1] - Vh_true_start[k] * (t[k - 1] - t[k])
-
-    x_est = [k0, V_abs_true_start[last_k], dR, np.arctan(Vh_true_start[last_k] / Vx_true_start[last_k])]
-
-    return x_est
-
-
-# inital trajectory section assessment - inital start speed reactive
-def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L, N):
-    xhy_0_start = xhy_0_set[0]
-    x_est_start = x_est_top[0]
-
-    k0 = x_est_start[0].real
-    v0 = x_est_start[1].real
-    dR = x_est_start[2].real
-    alpha = x_est_start[3].real
-
-    x_0 = 0
-    h_0 = 0
-
-    tmin = 0
-    tmax = t_meas[0]
-
-    vx_0_pas = v0 * np.cos(alpha)
-    vh_0_pas = v0 * np.sin(alpha)
-    a_x_sr = vx_0_pas / tmax
-    a_h_sr = vh_0_pas / tmax
-
-    t = []
-
-    n = 0
-    for i in range(N):
-        if i == 0:
-            n = 0
-        else:
-            n += (tmax - tmin) / (N - 1)
-        t.append(n)
-
-    x_true_start = np.zeros(N)
-    h_true_start = np.zeros(N)
-    Vx_true_start = np.zeros(N)
-    Vh_true_start = np.zeros(N)
-    Ax_true_start = np.zeros(N)
-    Ah_true_start = np.zeros(N)
-    R_true_start = np.zeros(N)
-    Vr_true_start = np.zeros(N)
-    theta_true_start = np.zeros(N)
-    V_abs_true_start = np.zeros(N)
-    alpha_true_start = np.zeros(N)
-    A_abs_true_start = np.zeros(N)
-
-    for k in range(N):
-
-        if k == 0:
-            x_true_start[k] = x_0
-            h_true_start[k] = h_0
-            Vx_true_start[k] = 0
-            Vh_true_start[k] = 0
-            Ax_true_start[k] = a_x_sr
-            Ah_true_start[k] = a_h_sr
-
-        else:
-            Ax_true_start[k] = Ax_true_start[k - 1]
-            Vx_true_start[k] = Vx_true_start[k - 1] + Ax_true_start[k] * (t[k] - t[k - 1])
-            x_true_start[k] = x_true_start[k - 1] + Vx_true_start[k] * (t[k] - t[k - 1])
-            Ah_true_start[k] = Ah_true_start[k - 1]
-            Vh_true_start[k] = Vh_true_start[k - 1] + Ah_true_start[k] * (t[k] - t[k - 1])
-            h_true_start[k] = h_true_start[k - 1] + Vh_true_start[k] * (t[k] - t[k - 1])
-
-        V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
-        A_abs_true_start[k] = np.sqrt(Ax_true_start[k] ** 2 + Ah_true_start[k] ** 2)
-        R_true_start[k] = np.sqrt((x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
-        Vr_true_start[k] = (Vx_true_start[k] * (x_true_start[k] - x_L) + Vh_true_start[k] * (
-                h_true_start[k] - h_L)) / np.sqrt(
-            (x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
-        theta_true_start[k] = np.arctan((h_true_start[k] - h_L) / np.sqrt((x_true_start[k] - x_L) ** 2 + y_L ** 2))
-        alpha_true_start[k] = np.arctan(Vh_true_start[k] / Vx_true_start[k])
-
-    return t, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
-           V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start
-
-
-# trajectory end
-def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_end, Vh_tr_end, V_abs_tr_end, Ax_tr_end,
-                        Ah_tr_end, A_abs_tr_end, alpha_tr_end, t_meas, R_tr_end, Vr_tr_end, theta_tr_end, x_L, y_L, h_L,
-                        hei, N):
-    # hei - bullet shield height
-    dR = 5
-
-    V0 = V_abs_tr_end[-1][-1]
-    alpha0 = alpha_tr_end[-1][-1]
-    Vx0 = Vx_tr_end[-1][-1]
-    Vh0 = Vh_tr_end[-1][-1]
-
-    A0 = A_abs_tr_end[-1][-1]
-    Ax0 = Ax_tr_end[-1][-1]
-    Ah0 = Ah_tr_end[-1][-1]
-
-    R0 = R_tr_end[-1][-1]
-    Vr0 = Vr_tr_end[-1][-1]
-    theta0 = theta_tr_end[-1][-1]
-
-    x_0 = x_tr_end[-1][-1]
-    h_0 = h_tr_end[-1][-1]
-
-    tmin = t_meas[-1][-1]
-    tmax = 100
-
-    t = []
-    n = 0
-    for i in range(N):
-        if i == 0:
-            n = 0
-        else:
-            n += (tmax - tmin) / (N - 1)
-        t.append(n)
-
-    mu_k = np.zeros(N)
-    x_true_end = np.zeros(N)
-    h_true_end = np.zeros(N)
-    Vx_true_end = np.zeros(N)
-    Vh_true_end = np.zeros(N)
-    Ax_true_end = np.zeros(N)
-    Ah_true_end = np.zeros(N)
-    R_true_end = np.zeros(N)
-    Vr_true_end = np.zeros(N)
-    theta_true_end = np.zeros(N)
-    V_abs_true_end = np.zeros(N)
-    alpha_true_end = np.zeros(N)
-    A_abs_true_end = np.zeros(N)
-
-    last_k = N
-
-    for k in range(N):
-
-        if k == 0:
-            x_true_end[k] = x_0
-            h_true_end[k] = h_0
-            Vx_true_end[k] = Vx0
-            Vh_true_end[k] = Vh0
-            V_abs_true_end[k] = V0
-            R_true_end[k] = R0
-            theta_true_end[k] = theta0
-            Vr_true_end[k] = Vr0
-            alpha_true_end[k] = alpha0
-            Ax_true_end[k] = Ax0
-            Ah_true_end[k] = Ah0
-            A_abs_true_end[k] = A0
-
-        else:
-
-            mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_end[k - 1] / (R * T)))) / m
-            # mu_k[k] = 0.5 * Cx * (np.pi * r ** 2) * rho_0 / m
-            Vx_true_end[k] = Vx_true_end[k - 1] + (
-                    -mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vx_true_end[k - 1]) * \
-                             (t[k] - t[k - 1])
-            Vh_true_end[k] = Vh_true_end[k - 1] + (
-                    -g - mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vh_true_end[k - 1]) * \
-                             (t[k] - t[k - 1])
-            V_abs_true_end[k] = np.sqrt(Vx_true_end[k] ** 2 + Vh_true_end[k] ** 2)
-            x_true_end[k] = x_true_end[k - 1] + Vx_true_end[k] * (t[k] - t[k - 1])
-            h_true_end[k] = h_true_end[k - 1] + Vh_true_end[k] * (t[k] - t[k - 1])
-            R_true_end[k] = np.sqrt((x_L - x_true_end[k]) ** 2 + y_L ** 2 + (h_L - h_true_end[k]) ** 2) + dR
-            theta_true_end[k] = np.arctan((h_true_end[k] - h_L) / np.sqrt((x_true_end[k] - x_L) ** 2 + y_L ** 2))
-            Vr_true_end[k] = (Vx_true_end[k] * (x_true_end[k] - x_L) + Vh_true_end[k] * (
-                    h_true_end[k] - h_L)) / np.sqrt(
-                (x_L - x_true_end[k]) ** 2 + y_L ** 2 + (h_L - h_true_end[k]) ** 2)
-            alpha_true_end[k] = np.arctan(Vh_true_end[k] / Vx_true_end[k])
-            Ax_true_end[k] = (Vx_true_end[k] - Vx_true_end[k - 1]) / (t[k] - t[k - 1])
-            Ah_true_end[k] = (Vh_true_end[k] - Vh_true_end[k - 1]) / (t[k] - t[k - 1])
-            A_abs_true_end[k] = np.sqrt(Ax_true_end[k] ** 2 + Ah_true_end[k] ** 2)
-
-        if h_true_end[k] < hei:
-            last_k = k
-            break
-
-    return t[:last_k] + tmin, x_true_end[:last_k], h_true_end[:last_k], R_true_end[:last_k], \
-           Vr_true_end[:last_k], theta_true_end[:last_k], Vx_true_end[:last_k], \
-           Vh_true_end[:last_k], V_abs_true_end[:last_k], alpha_true_end[:last_k], A_abs_true_end[:last_k], \
-           Ax_true_end[:last_k], Ah_true_end[:last_k]
-
-
-# linear piece estimation error
-def func_linear_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas,
-                                       theta_meas, m, g, x_L, y_L, h_L):
-    t_err_plot = []
-    R_er_plot = []
-    Vr_er_plot = []
-    theta_er_plot = []
-    R_est_full_plot = []
-    Vr_est_full_plot = []
-    theta_est_full_plot = []
-    R_est_err_plot = []
-    Vr_est_err_plot = []
-    theta_est_err_plot = []
-
-    for s in range(len(x_est_top)):
-        x_est_fin = x_est_top[s]
-
-        if s == (len(x_est_top) - 1):
-            t = t_meas[meas_t_ind[s][window_set[s][0] - 1]:]
-            R_er = R_meas[meas_t_ind[s][window_set[s][0] - 1]:]
-            Vr_er = Vr_meas[meas_t_ind[s][window_set[s][0] - 1]:]
-            theta_er = theta_meas[meas_t_ind[s][window_set[s][0] - 1]:]
-            tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
-
-        else:
-            t = t_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][window_set[s][1]]]
-            R_er = R_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][window_set[s][1]]]
-            Vr_er = Vr_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][window_set[s][1]]]
-            theta_er = theta_meas[meas_t_ind[s][window_set[s][0] - 1]:meas_t_ind[s][window_set[s][1]]]
-            tmin = t_meas[meas_t_ind[s][window_set[s][0] - 1]]
-
-        t_err_plot.append(t)
-        R_er_plot.append(R_er)
-        Vr_er_plot.append(Vr_er)
-        theta_er_plot.append(theta_er)
-        t = t - tmin
-
-        x_0 = xhy_0_set[s][0].real
-        h_0 = xhy_0_set[s][1].real
-
-        R_est_full = np.zeros(len(t))
-        theta_est_full = np.zeros(len(t))
-        Vr_est_full = np.zeros(len(t))
-
-        R_est_err = np.zeros(len(t))
-        theta_est_err = np.zeros(len(t))
-        Vr_est_err = np.zeros(len(t))
-
-        k0 = x_est_fin[0].real
-        v0 = x_est_fin[1].real
-        dR = x_est_fin[2].real
-        alpha = x_est_fin[3].real
-
-        for k in range(len(t)):
-            R_est_full[k] = np.sqrt(
-                (x_L - ((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0)) ** 2 +
-                y_L ** 2 + (h_L - ((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
-                                   (1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0)) ** 2) + dR
-
-            theta_est_full[k] = np.arctan((((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
-                                            (1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0) - h_L) / np.sqrt(
-                (((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0) - x_L) ** 2 + y_L ** 2))
-
-            Vr_est_full[k] = ((v0 * np.exp(-k0 * t[k] / m) * np.cos(alpha)) *
-                              (((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0) - x_L) +
-                              (v0 * np.sin(alpha) * np.exp(-k0 * t[k] / m) - (m * g / k0) *
-                               (1 - np.exp(-k0 * t[k] / m))) * (((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
-                                                                 (1 - np.exp(-k0 * t[k] / m)) - (
-                                                                         m * g * t[k]) / k0 + h_0) - h_L)) / \
-                             np.sqrt((x_L - ((m / k0) * v0 * np.cos(alpha) *
-                                             (1 - np.exp(-k0 * t[k] / m)) + x_0)) ** 2 + y_L ** 2 + (h_L - ((m / k0) *
-                                                                                                            (
-                                                                                                                    v0 * np.sin(
-                                                                                                                alpha) + (
-                                                                                                                            m * g) / k0) * (
-                                                                                                                    1 - np.exp(
-                                                                                                                -k0 *
-                                                                                                                t[
-                                                                                                                    k] / m)) - (
-                                                                                                                    m * g *
-                                                                                                                    t[
-                                                                                                                        k]) / k0 + h_0)) ** 2)
-
-            R_est_err[k] = R_est_full[k] - R_er[k]
-            Vr_est_err[k] = Vr_est_full[k] - Vr_er[k]
-            theta_est_err[k] = theta_est_full[k] - theta_er[k]
-
-        R_est_full_plot.append(R_est_full)
-        Vr_est_full_plot.append(Vr_est_full)
-        theta_est_full_plot.append(theta_est_full)
-        R_est_err_plot.append(R_est_err)
-        Vr_est_err_plot.append(Vr_est_err)
-        theta_est_err_plot.append(theta_est_err)
-
-    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot
-
-
-# quad piece estimation error
-def func_quad_piece_estimation_error(xhy_0_set, x_est_top, meas_t_ind, window_set, t_meas, R_meas, Vr_meas, theta_meas,
-                                     m, g, x_L, y_L, h_L):
-    t_err_plot = []
-    R_er_plot = []
-    Vr_er_plot = []
-    theta_er_plot = []
-    R_est_full_plot = []
-    Vr_est_full_plot = []
-    theta_est_full_plot = []
-    R_est_err_plot = []
-    Vr_est_err_plot = []
-    theta_est_err_plot = []
-
-    for s in range(len(x_est_top)):
-        x_est_fin = x_est_top[s]
-
-        if s == (len(x_est_top) - 1):
-
-            t = t_meas[meas_t_ind[s][0]:]
-            R_er = R_meas[meas_t_ind[s][0]:]
-            Vr_er = Vr_meas[meas_t_ind[s][0]:]
-            theta_er = theta_meas[meas_t_ind[s][0]:]
-            tmin = t[0]
-
-        else:
-
-            t = t_meas[meas_t_ind[s][0]:meas_t_ind[s+1][0]]
-            R_er = R_meas[meas_t_ind[s][0]:meas_t_ind[s+1][0]]
-            Vr_er = Vr_meas[meas_t_ind[s][0]:meas_t_ind[s+1][0]]
-            theta_er = theta_meas[meas_t_ind[s][0]:meas_t_ind[s+1][0]]
-            tmin = t[0]
-
-        t_err_plot.append(t)
-        R_er_plot.append(R_er)
-        Vr_er_plot.append(Vr_er)
-        theta_er_plot.append(theta_er)
-        t = t - tmin
-
-        x_0 = xhy_0_set[s][0].real
-        h_0 = xhy_0_set[s][1].real
-
-        R_est_full = np.zeros(len(t))
-        theta_est_full = np.zeros(len(t))
-        Vr_est_full = np.zeros(len(t))
-
-        R_est_err = np.zeros(len(t))
-        theta_est_err = np.zeros(len(t))
-        Vr_est_err = np.zeros(len(t))
-
-        k0 = x_est_fin[0].real
-        v0 = x_est_fin[1].real
-        dR = x_est_fin[2].real
-        alpha = x_est_fin[3].real
-
-        for k in range(len(t)):
-            R_est_full[k] = np.sqrt((x_L - (x_0 + (m / k0) * np.log(
-                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L + (
-                                            h_L - (
-                                            h_0 + (m / k0) * np.log(
-                                        np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(
-                                            k0 / (m * g)) * v0 * np.sin(
-                                            alpha) * np.sin(
-                                            t[k] * np.sqrt(k0 * g / m))))) ** 2) + dR
-
-            theta_est_full[k] = np.arctan(((h_0 + (m / k0) * np.log(
-                np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
-                    alpha) * np.sin(t[k] * np.sqrt(k0 * g / m)))) - h_L) / np.sqrt((x_L - (
-                    x_0 + (m / k0) * np.log(
-                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L ** 2))
-
-            Vr_est_full[k] = ((v0 * np.cos(alpha) * ((x_0 + (m / k0) * np.log(
-                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m)) - x_L)) / (1 + (
-                    k0 * t[k] * v0 * np.cos(alpha)) / m) + ((np.sqrt(
-                m * g * k0) * v0 * np.sin(alpha) - m * g * np.tan(
-                np.sqrt(k0 * g / m) * t[k])) / (np.sqrt(m * g * k0) + k0 *
-                                                v0 * np.sin(
-                        alpha) * np.tan(np.sqrt(k0 * g / m) * t[k]))) * (
-                                      (h_0 + (m / k0) * np.log(
-                                          np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
-                                              k0 / (m * g)) * v0 * np.sin(
-                                              alpha) * np.sin(
-                                              np.sqrt(k0 * g / m) * t[k]))) - h_L)) / (
-                                 np.sqrt((x_L - (
-                                         x_0 + (m / k0) * np.log(
-                                     1 + (k0 * v0 * t[k] * np.cos(
-                                         alpha)) / m))) ** 2 + y_L ** 2 + (h_L - (
-                                         h_0 + (m / k0) * np.log(
-                                     np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
-                                         k0 / (m * g)) * v0 * np.sin(
-                                         alpha) * np.sin(
-                                         np.sqrt(k0 * g / m) * t[k])))) ** 2))
-
-            R_est_err[k] = R_est_full[k] - R_er[k]
-            Vr_est_err[k] = Vr_est_full[k] - Vr_er[k]
-            theta_est_err[k] = theta_est_full[k] - theta_er[k]
-
-        R_est_full_plot.append(R_est_full)
-        Vr_est_full_plot.append(Vr_est_full)
-        theta_est_full_plot.append(theta_est_full)
-        R_est_err_plot.append(R_est_err)
-        Vr_est_err_plot.append(Vr_est_err)
-        theta_est_err_plot.append(theta_est_err)
-
-    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot
-
-
 # linear piece estimation start
-def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L, N):
+def func_linear_piece_estimation_start(x_est_start, t_meas, window_set, m, g, x_L, y_L, h_L, N):
     x_0 = 0
     h_0 = 0
 
     tmin = 0
-    tmax = t_meas[0][0]
+    tmax = t_meas[window_set[0][0] - 1]
 
     k0 = x_est_start[0]
     v0 = x_est_start[1]
-    dR = x_est_start[2]
+    # как учитывать dR - чтобы была траектория без разрывов? фильтрация?
+    dR = 0
     alpha = x_est_start[3]
 
     t = []
@@ -2484,9 +1711,9 @@ def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L,
                                                                                                                     k]) / k0 + h_0)) ** 2)
 
         V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
-
         alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
 
+    # может вычислять ускорения в самом конце, другой функцией
     for k in range(len(t)):
         if k < len(t) - 1:
             Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
@@ -2503,16 +1730,17 @@ def func_linear_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L,
 
 
 # quad piece estimation start
-def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L, N):
+def func_quad_piece_estimation_start(x_est_start, t_meas, window_set, m, g, x_L, y_L, h_L, N):
     x_0 = 0
     h_0 = 0
 
     tmin = 0
-    tmax = t_meas[0][0]
+    tmax = t_meas[window_set[0][0] - 1]
 
     k0 = x_est_start[0]
     v0 = x_est_start[1]
-    dR = x_est_start[2]
+    # как учитывать dR - чтобы была траектория без разрывов? фильтрация?
+    dR = 0
     alpha = x_est_start[3]
 
     t = []
@@ -2612,7 +1840,1386 @@ def func_quad_piece_estimation_start(x_est_start, t_meas, m, g, x_L, y_L, h_L, N
            Ah_true_er
 
 
-def func_std_error_meas(track_meas, t_err_plot, R_er_plot, Vr_er_plot, theta_er_plot, R_est_err_plot, Vr_est_err_plot,
+# linear piece estimation of measurements
+def func_linear_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_start, h_start, vx_start, vh_start, N, m,
+                                 g, x_L, y_L, h_L):
+    t_meas_plot = []
+    x_tr_er_plot = []
+    h_tr_er_plot = []
+    R_est_full_plot = []
+    Vr_est_full_plot = []
+    theta_est_full_plot = []
+    Vx_true_er_plot = []
+    Vh_true_er_plot = []
+    V_abs_est_plot = []
+
+    alpha_tr_er_plot = []
+    A_abs_est_plot = []
+    Ax_true_er_plot = []
+    Ah_true_er_plot = []
+
+    x_0 = x_start[-1]
+    h_0 = h_start[-1]
+
+    vx_0 = vx_start[-1]
+    # vh_0 = vh_start[-1]
+
+    for s in range(len(x_est_top)):
+
+        k0 = x_est_top[s][0]
+        v0 = x_est_top[s][1]
+        # как учитывать dR - чтобы была траектория без разрывов? фильтрация?
+        dR = 0
+        alpha = x_est_top[s][3]
+
+        if s == len(x_est_top) - 1:
+            tmin = t_meas[window_set[s][0] - 1]
+            tmax = t_meas[-1]
+        else:
+            tmin = t_meas[window_set[s][0] - 1]
+            tmax = t_meas[window_set[s + 1][0] - 1]
+
+        t = []
+        n = 0
+        for i in range(N):
+            if i == 0:
+                n = 0
+            else:
+                n += (tmax - tmin) / (N - 1)
+            t.append(n)
+        t = np.array(t)
+
+        t_meas_plot.append(t + tmin)
+
+        x_tr_er = np.zeros(len(t))
+        h_tr_er = np.zeros(len(t))
+        R_est_full = np.zeros(len(t))
+        theta_est_full = np.zeros(len(t))
+        Vr_est_full = np.zeros(len(t))
+        V_abs_est = np.zeros(len(t))
+        Vx_true_er = np.zeros(len(t))
+        Vh_true_er = np.zeros(len(t))
+
+        alpha_tr_er = np.zeros(len(t))
+        A_abs_est = np.zeros(len(t))
+        Ax_true_er = np.zeros(len(t))
+        Ah_true_er = np.zeros(len(t))
+
+        for k in range(len(t)):
+            x_tr_er[k] = x_0 + (m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m))
+
+            h_tr_er[k] = ((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) * (
+                    1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0)
+
+            Vx_true_er[k] = v0 * np.exp(-k0 * t[k] / m) * np.cos(alpha)
+            Vh_true_er[k] = v0 * np.sin(alpha) * np.exp(-k0 * t[k] / m) - (m * g / k0) * (1 - np.exp(-k0 * t[k] / m))
+
+            R_est_full[k] = np.sqrt(
+                (x_L - ((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0)) ** 2 +
+                y_L ** 2 + (h_L - ((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
+                                   (1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0)) ** 2) + dR
+
+            theta_est_full[k] = np.arctan((((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
+                                            (1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0) - h_L) / np.sqrt(
+                (((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0) - x_L) ** 2 + y_L ** 2))
+
+            Vr_est_full[k] = ((v0 * np.exp(-k0 * t[k] / m) * np.cos(alpha)) *
+                              (((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0) - x_L) +
+                              (v0 * np.sin(alpha) * np.exp(-k0 * t[k] / m) - (m * g / k0) *
+                               (1 - np.exp(-k0 * t[k] / m))) * (((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
+                                                                 (1 - np.exp(-k0 * t[k] / m)) - (
+                                                                         m * g * t[k]) / k0 + h_0) - h_L)) / \
+                             np.sqrt((x_L - ((m / k0) * v0 * np.cos(alpha) *
+                                             (1 - np.exp(-k0 * t[k] / m)) + x_0)) ** 2 + y_L ** 2 + (h_L - ((m / k0) *
+                                                                                                            (
+                                                                                                                    v0 * np.sin(
+                                                                                                                alpha) + (
+                                                                                                                            m * g) / k0) * (
+                                                                                                                    1 - np.exp(
+                                                                                                                -k0 *
+                                                                                                                t[
+                                                                                                                    k] / m)) - (
+                                                                                                                    m * g *
+                                                                                                                    t[
+                                                                                                                        k]) / k0 + h_0)) ** 2)
+
+            V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
+            alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
+
+        # берем конечную точку траектории за новое приближение
+        x_0 = x_tr_er[-1]
+        h_0 = h_tr_er[-1]
+
+        # сглаживаем траекторию по Vx, Vy
+        delta_Vx = vx_0 - Vx_true_er[0]
+        # delta_Vh = vh_0 - Vh_true_er[0]
+
+        # прибавляем дельту к следующим точкам траектории
+        Vx_true_er = Vx_true_er + delta_Vx
+        # Vh_true_er = Vh_true_er + delta_Vh
+
+        # запоминаем последнее значение скорости, чтобы сгладить траекторию
+        vx_0 = Vx_true_er[-1]
+        # vh_0 = Vh_true_er[-1]
+
+        for k in range(len(t)):
+            if k < len(t) - 1:
+                Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
+                Ah_true_er[k] = (Vh_true_er[k + 1] - Vh_true_er[k]) / (t[k + 1] - t[k])
+                A_abs_est[k] = np.sqrt(Ax_true_er[k] ** 2 + Ah_true_er[k] ** 2)
+
+        A_abs_est[-1] = A_abs_est[-2]
+        Ax_true_er[-1] = Ax_true_er[-2]
+        Ah_true_er[-1] = Ah_true_er[-2]
+
+        x_tr_er_plot.append(x_tr_er)
+        h_tr_er_plot.append(h_tr_er)
+        R_est_full_plot.append(R_est_full)
+        Vr_est_full_plot.append(Vr_est_full)
+        theta_est_full_plot.append(theta_est_full)
+
+        Vx_true_er_plot.append(Vx_true_er)
+        Vh_true_er_plot.append(Vh_true_er)
+        V_abs_est_plot.append(V_abs_est)
+
+        alpha_tr_er_plot.append(alpha_tr_er)
+        A_abs_est_plot.append(A_abs_est)
+        Ax_true_er_plot.append(Ax_true_er)
+        Ah_true_er_plot.append(Ah_true_er)
+
+    return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
+           Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
+           Ah_true_er_plot
+
+
+def func_quad_piece_estimation(xhy_0_set, x_est_top, window_set, t_meas, x_start, h_start, vx_start, vh_start, N, m, g,
+                               x_L, y_L, h_L):
+    t_meas_plot = []
+    x_tr_er_plot = []
+    h_tr_er_plot = []
+    R_est_full_plot = []
+    Vr_est_full_plot = []
+    Vx_true_er_plot = []
+    Vh_true_er_plot = []
+    theta_est_full_plot = []
+    V_abs_est_plot = []
+    alpha_tr_er_plot = []
+    A_abs_est_plot = []
+    Ax_true_er_plot = []
+    Ah_true_er_plot = []
+
+    x_0 = x_start[-1]
+    h_0 = h_start[-1]
+
+    # делаем условие для второй части - активно-реактивного
+    if vx_start[-1] != 0 and vh_start[-1] != 0:
+        vx_0 = vx_start[-1]
+        vh_0 = vh_start[-1]
+
+    for s in range(len(x_est_top)):
+
+        k0 = x_est_top[s][0]
+        v0 = x_est_top[s][1]
+        dR = 0
+        alpha = x_est_top[s][3]
+
+        if s == len(x_est_top) - 1:
+            tmin = t_meas[window_set[s][0] - 1]
+            tmax = t_meas[-1]
+        else:
+            tmin = t_meas[window_set[s][0] - 1]
+            tmax = t_meas[window_set[s + 1][0] - 1]
+
+        t = []
+        n = 0
+        for i in range(N):
+            if i == 0:
+                n = 0
+            else:
+                n += (tmax - tmin) / (N - 1)
+            t.append(n)
+        t = np.array(t)
+
+        t_meas_plot.append(t + tmin)
+
+        x_tr_er = np.zeros(len(t))
+        h_tr_er = np.zeros(len(t))
+        R_est_full = np.zeros(len(t))
+        theta_est_full = np.zeros(len(t))
+        Vr_est_full = np.zeros(len(t))
+        V_abs_est = np.zeros(len(t))
+        Vx_true_er = np.zeros(len(t))
+        Vh_true_er = np.zeros(len(t))
+
+        alpha_tr_er = np.zeros(len(t))
+        A_abs_est = np.zeros(len(t))
+        Ax_true_er = np.zeros(len(t))
+        Ah_true_er = np.zeros(len(t))
+
+        for k in range(len(t)):
+            x_tr_er[k] = (m / k0) * np.log(
+                1 + (k0 / m) * v0 * t[k] * np.cos(alpha)) + x_0
+
+            h_tr_er[k] = (m / k0) * np.log(
+                np.cos(np.sqrt((k0 * g) / m) * t[k]) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
+                    alpha) * np.sin(np.sqrt((k0 * g) / m) * t[k])) + h_0
+
+            R_est_full[k] = np.sqrt((x_L - (x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L + (
+                                            h_L - (
+                                            h_0 + (m / k0) * np.log(
+                                        np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(
+                                            k0 / (m * g)) * v0 * np.sin(
+                                            alpha) * np.sin(
+                                            t[k] * np.sqrt(k0 * g / m))))) ** 2) + dR
+
+            theta_est_full[k] = np.arctan(((h_0 + (m / k0) * np.log(
+                np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
+                    alpha) * np.sin(t[k] * np.sqrt(k0 * g / m)))) - h_L) / np.sqrt((x_L - (
+                    x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L ** 2))
+
+            Vr_est_full[k] = ((v0 * np.cos(alpha) * ((x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m)) - x_L)) / (1 + (
+                    k0 * t[k] * v0 * np.cos(alpha)) / m) + ((np.sqrt(
+                m * g * k0) * v0 * np.sin(alpha) - m * g * np.tan(
+                np.sqrt(k0 * g / m) * t[k])) / (np.sqrt(m * g * k0) + k0 *
+                                                v0 * np.sin(
+                        alpha) * np.tan(np.sqrt(k0 * g / m) * t[k]))) * (
+                                      (h_0 + (m / k0) * np.log(
+                                          np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
+                                              k0 / (m * g)) * v0 * np.sin(
+                                              alpha) * np.sin(
+                                              np.sqrt(k0 * g / m) * t[k]))) - h_L)) / (
+                                 np.sqrt((x_L - (
+                                         x_0 + (m / k0) * np.log(
+                                     1 + (k0 * v0 * t[k] * np.cos(
+                                         alpha)) / m))) ** 2 + y_L ** 2 + (h_L - (
+                                         h_0 + (m / k0) * np.log(
+                                     np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
+                                         k0 / (m * g)) * v0 * np.sin(
+                                         alpha) * np.sin(
+                                         np.sqrt(k0 * g / m) * t[k])))) ** 2))
+
+            Vx_true_er[k] = (v0 * np.cos(alpha)) / (
+                    1 + k0 * v0 * t[k] * np.cos(alpha) / m)
+
+            Vh_true_er[k] = (np.sqrt(m * g * k0) * v0 * np.sin(
+                alpha) - m * g * np.tan(
+                np.sqrt((k0 * g) / m) * t[k])) / (
+                                    np.sqrt(m * g * k0) + k0 * v0 * np.sin(
+                                alpha) * np.tan(np.sqrt((k0 * g) / m) * t[k]))
+
+        #
+        if vx_start[-1] == 0 and vh_start[-1] == 0 and s == 0:
+            vx_0 = Vx_true_er[0]
+            vh_0 = Vh_true_er[0]
+
+        x_0 = x_tr_er[-1]
+        h_0 = h_tr_er[-1]
+
+        delta_Vx = vx_0 - Vx_true_er[0]
+        # delta_Vh = vh_0 - Vh_true_er[0]
+
+        Vx_true_er = Vx_true_er + delta_Vx
+        # Vh_true_er = Vh_true_er + delta_Vh
+
+        vx_0 = Vx_true_er[-1]
+        # vh_0 = Vh_true_er[-1]
+
+        for k in range(len(t)):
+
+            V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
+            alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
+
+            if k < len(t) - 1:
+                Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
+                Ah_true_er[k] = (Vh_true_er[k + 1] - Vh_true_er[k]) / (t[k + 1] - t[k])
+                A_abs_est[k] = np.sqrt(Ax_true_er[k] ** 2 + Ah_true_er[k] ** 2)
+
+        A_abs_est[-1] = A_abs_est[-2]
+        Ax_true_er[-1] = Ax_true_er[-2]
+        Ah_true_er[-1] = Ah_true_er[-2]
+
+        x_tr_er_plot.append(x_tr_er)
+        h_tr_er_plot.append(h_tr_er)
+        R_est_full_plot.append(R_est_full)
+        Vr_est_full_plot.append(Vr_est_full)
+        Vx_true_er_plot.append(Vx_true_er)
+        Vh_true_er_plot.append(Vh_true_er)
+        theta_est_full_plot.append(theta_est_full)
+        V_abs_est_plot.append(V_abs_est)
+
+        alpha_tr_er_plot.append(alpha_tr_er)
+        A_abs_est_plot.append(A_abs_est)
+        Ax_true_er_plot.append(Ax_true_er)
+        Ah_true_er_plot.append(Ah_true_er)
+
+    return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
+           Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
+           Ah_true_er_plot
+
+
+def func_quad_piece_estimation_two(xhy_0_set, x_est_top, window_set, t_meas, x_start, h_start, N, m, g,
+                                   x_L, y_L, h_L):
+    t_meas_plot = []
+    x_tr_er_plot = []
+    h_tr_er_plot = []
+    R_est_full_plot = []
+    Vr_est_full_plot = []
+    Vx_true_er_plot = []
+    Vh_true_er_plot = []
+    theta_est_full_plot = []
+    V_abs_est_plot = []
+    alpha_tr_er_plot = []
+    A_abs_est_plot = []
+    Ax_true_er_plot = []
+    Ah_true_er_plot = []
+
+    x_0 = x_start
+    h_0 = h_start
+
+    k0 = x_est_top[0][0]
+    v0 = x_est_top[0][1]
+    dR = 0
+    alpha = x_est_top[0][3]
+
+    vx_0 = (v0 * np.cos(alpha)) / (
+            1 + k0 * v0 * t_meas[0] * np.cos(alpha) / m)
+
+    vh_0 = (np.sqrt(m * g * k0) * v0 * np.sin(
+        alpha) - m * g * np.tan(
+        np.sqrt((k0 * g) / m) * t_meas[0])) / (
+                   np.sqrt(m * g * k0) + k0 * v0 * np.sin(
+               alpha) * np.tan(np.sqrt((k0 * g) / m) * t_meas[0]))
+
+    for s in range(len(x_est_top)):
+
+        k0 = x_est_top[s][0]
+        v0 = x_est_top[s][1]
+        dR = 0
+        alpha = x_est_top[s][3]
+
+        if s == len(x_est_top) - 1:
+            tmin = t_meas[window_set[s][0] - 1]
+            tmax = t_meas[-1]
+        else:
+            tmin = t_meas[window_set[s][0] - 1]
+            tmax = t_meas[window_set[s + 1][0] - 1]
+
+        t = []
+        n = 0
+        for i in range(N):
+            if i == 0:
+                n = 0
+            else:
+                n += (tmax - tmin) / (N - 1)
+            t.append(n)
+        t = np.array(t)
+
+        t_meas_plot.append(t + tmin)
+
+        x_tr_er = np.zeros(len(t))
+        h_tr_er = np.zeros(len(t))
+        R_est_full = np.zeros(len(t))
+        theta_est_full = np.zeros(len(t))
+        Vr_est_full = np.zeros(len(t))
+        V_abs_est = np.zeros(len(t))
+        Vx_true_er = np.zeros(len(t))
+        Vh_true_er = np.zeros(len(t))
+
+        alpha_tr_er = np.zeros(len(t))
+        A_abs_est = np.zeros(len(t))
+        Ax_true_er = np.zeros(len(t))
+        Ah_true_er = np.zeros(len(t))
+
+        for k in range(len(t)):
+            x_tr_er[k] = (m / k0) * np.log(
+                1 + (k0 / m) * v0 * t[k] * np.cos(alpha)) + x_0
+
+            h_tr_er[k] = (m / k0) * np.log(
+                np.cos(np.sqrt((k0 * g) / m) * t[k]) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
+                    alpha) * np.sin(np.sqrt((k0 * g) / m) * t[k])) + h_0
+
+            R_est_full[k] = np.sqrt((x_L - (x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L + (
+                                            h_L - (
+                                            h_0 + (m / k0) * np.log(
+                                        np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(
+                                            k0 / (m * g)) * v0 * np.sin(
+                                            alpha) * np.sin(
+                                            t[k] * np.sqrt(k0 * g / m))))) ** 2) + dR
+
+            theta_est_full[k] = np.arctan(((h_0 + (m / k0) * np.log(
+                np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
+                    alpha) * np.sin(t[k] * np.sqrt(k0 * g / m)))) - h_L) / np.sqrt((x_L - (
+                    x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L ** 2))
+
+            Vr_est_full[k] = ((v0 * np.cos(alpha) * ((x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m)) - x_L)) / (1 + (
+                    k0 * t[k] * v0 * np.cos(alpha)) / m) + ((np.sqrt(
+                m * g * k0) * v0 * np.sin(alpha) - m * g * np.tan(
+                np.sqrt(k0 * g / m) * t[k])) / (np.sqrt(m * g * k0) + k0 *
+                                                v0 * np.sin(
+                        alpha) * np.tan(np.sqrt(k0 * g / m) * t[k]))) * (
+                                      (h_0 + (m / k0) * np.log(
+                                          np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
+                                              k0 / (m * g)) * v0 * np.sin(
+                                              alpha) * np.sin(
+                                              np.sqrt(k0 * g / m) * t[k]))) - h_L)) / (
+                                 np.sqrt((x_L - (
+                                         x_0 + (m / k0) * np.log(
+                                     1 + (k0 * v0 * t[k] * np.cos(
+                                         alpha)) / m))) ** 2 + y_L ** 2 + (h_L - (
+                                         h_0 + (m / k0) * np.log(
+                                     np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
+                                         k0 / (m * g)) * v0 * np.sin(
+                                         alpha) * np.sin(
+                                         np.sqrt(k0 * g / m) * t[k])))) ** 2))
+
+            Vx_true_er[k] = (v0 * np.cos(alpha)) / (
+                    1 + k0 * v0 * t[k] * np.cos(alpha) / m)
+
+            Vh_true_er[k] = (np.sqrt(m * g * k0) * v0 * np.sin(
+                alpha) - m * g * np.tan(
+                np.sqrt((k0 * g) / m) * t[k])) / (
+                                    np.sqrt(m * g * k0) + k0 * v0 * np.sin(
+                                alpha) * np.tan(np.sqrt((k0 * g) / m) * t[k]))
+
+        x_0 = x_tr_er[-1]
+        h_0 = h_tr_er[-1]
+
+        delta_Vx = vx_0 - Vx_true_er[0]
+        # delta_Vh = vh_0 - Vh_true_er[0]
+
+        Vx_true_er = Vx_true_er + delta_Vx
+        # Vh_true_er = Vh_true_er + delta_Vh
+
+        vx_0 = Vx_true_er[-1]
+        # vh_0 = Vh_true_er[-1]
+
+        for k in range(len(t)):
+
+            V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
+            alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
+
+            if k < len(t) - 1:
+                Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
+                Ah_true_er[k] = (Vh_true_er[k + 1] - Vh_true_er[k]) / (t[k + 1] - t[k])
+                A_abs_est[k] = np.sqrt(Ax_true_er[k] ** 2 + Ah_true_er[k] ** 2)
+
+        A_abs_est[-1] = A_abs_est[-2]
+        Ax_true_er[-1] = Ax_true_er[-2]
+        Ah_true_er[-1] = Ah_true_er[-2]
+
+        x_tr_er_plot.append(x_tr_er)
+        h_tr_er_plot.append(h_tr_er)
+        R_est_full_plot.append(R_est_full)
+        Vr_est_full_plot.append(Vr_est_full)
+        Vx_true_er_plot.append(Vx_true_er)
+        Vh_true_er_plot.append(Vh_true_er)
+        theta_est_full_plot.append(theta_est_full)
+        V_abs_est_plot.append(V_abs_est)
+
+        alpha_tr_er_plot.append(alpha_tr_er)
+        A_abs_est_plot.append(A_abs_est)
+        Ax_true_er_plot.append(Ax_true_er)
+        Ah_true_er_plot.append(Ah_true_er)
+
+    return t_meas_plot, x_tr_er_plot, h_tr_er_plot, R_est_full_plot, Vr_est_full_plot, theta_est_full_plot, \
+           Vx_true_er_plot, Vh_true_er_plot, V_abs_est_plot, alpha_tr_er_plot, A_abs_est_plot, Ax_true_er_plot, \
+           Ah_true_er_plot
+
+
+# filter speed
+# def func_filter_speed_smoother(t_start, t_meas_plot, t_end, Vx_true_start, Vh_true_start, Vx_true_plot, Vh_true_plot, Vx_true_end,
+#                                Vh_true_end, delta, sigma_ksi, sigma_n):
+#
+#     # фильтровать Vh двойным фильтром
+#     # находим модуль V, alpha
+#     # находим составляющие ускорений - нужно ли будет фильтровать их или поднимать опускать, чтобы не было разрывов?
+#
+#     t = []
+#     Vx_true_er = []
+#     Vh_true_er = []
+#
+#     for i in range(len(t_start)):
+#         t.append(t_start[i])
+#         Vx_true_er.append(Vx_true_start[i])
+#         Vh_true_er.append(Vh_true_start[i])
+#
+#     for i in range(len(t_meas_plot)):
+#         for j in range(len(t_meas_plot[i])-1):
+#             t.append(t_meas_plot[i][j])
+#             Vx_true_er.append(Vx_true_plot[i][j])
+#             Vh_true_er.append(Vh_true_plot[i][j])
+#
+#     for i in range(len(t_end)):
+#         t.append(t_end[i])
+#         Vx_true_er.append(Vx_true_end[i])
+#         Vh_true_er.append(Vh_true_end[i])
+#
+#     Vh_true_er = func_angle_smoother(Vh_true_er, t, delta, sigma_ksi, sigma_n)
+
+
+# def func_filter_speed_smoother(t_start, t_meas_plot, t_end, Vx_true_start, Vh_true_start, Vx_true_plot, Vh_true_plot,
+#                                Vx_true_end,
+#                                Vh_true_end, delta, sigma_ksi, sigma_n):
+#     # фильтровать Vh двойным фильтром
+#     # находим модуль V, alpha
+#     # находим составляющие ускорений - нужно ли будет фильтровать их или поднимать опускать, чтобы не было разрывов?
+#
+#     t = []
+#     Vx_true_er = []
+#     Vh_true_er = []
+#
+#     for i in range(len(t_start)):
+#         t.append(t_start[i])
+#         Vx_true_er.append(Vx_true_start[i])
+#         Vh_true_er.append(Vh_true_start[i])
+#
+#     for i in range(len(t_meas_plot)):
+#         for j in range(len(t_meas_plot[i]) - 1):
+#             t.append(t_meas_plot[i][j])
+#             Vx_true_er.append(Vx_true_plot[i][j])
+#             Vh_true_er.append(Vh_true_plot[i][j])
+#
+#     for i in range(len(t_end)):
+#         t.append(t_end[i])
+#         Vx_true_er.append(Vx_true_end[i])
+#         Vh_true_er.append(Vh_true_end[i])
+#
+#     Vh_true_er = func_angle_smoother(Vh_true_er, t, delta, sigma_ksi, sigma_n)
+#
+#     del t[299]
+#     del Vx_true_er[299]
+#     Vh_true_er = list(Vh_true_er)
+#     del Vh_true_er[299]
+#
+#     V_abs_est = np.zeros(len(t))
+#     alpha_tr_er = np.zeros(len(t))
+#     Ax_true_er = np.zeros(len(t))
+#     Ah_true_er = np.zeros(len(t))
+#     A_abs_est = np.zeros(len(t))
+#
+#     for k in range(len(t)):
+#
+#         V_abs_est[k] = np.sqrt(Vx_true_er[k] ** 2 + Vh_true_er[k] ** 2)
+#         alpha_tr_er[k] = np.arctan(Vh_true_er[k] / Vx_true_er[k])
+#
+#         if k < len(t) - 1:
+#             Ax_true_er[k] = (Vx_true_er[k + 1] - Vx_true_er[k]) / (t[k + 1] - t[k])
+#             Ah_true_er[k] = (Vh_true_er[k + 1] - Vh_true_er[k]) / (t[k + 1] - t[k])
+#             A_abs_est[k] = np.sqrt(Ax_true_er[k] ** 2 + Ah_true_er[k] ** 2)
+#
+#     A_abs_est[-1] = A_abs_est[-2]
+#     Ax_true_er[-1] = Ax_true_er[-2]
+#     Ah_true_er[-1] = Ah_true_er[-2]
+#
+#     return t0
+
+# inital trajectory section assessment - inital start speed
+def func_trajectory_start(Cx, r, rho_0, M, R, T, m, g, xhy_0_set, x_est_top, t_meas, window_set, N):
+    xhy_0_start = xhy_0_set[0]
+    x_est_start = x_est_top[0]
+
+    k0 = x_est_start[0]
+    v0 = x_est_start[1]
+    dR = 0
+    alpha = x_est_start[3]
+
+    x_0 = xhy_0_start[0]
+    h_0 = xhy_0_start[1]
+
+    tmin = 0
+    tmax = t_meas[window_set[0][0] - 1]
+
+    t = []
+
+    n = 0
+    for i in range(N):
+        if i == 0:
+            n = 0
+        else:
+            n += (tmax - tmin) / (N - 1)
+        t.append(n)
+
+    t = sorted(t, reverse=True)
+
+    mu_k = np.zeros(N)
+    x_true_start = np.zeros(N)
+    h_true_start = np.zeros(N)
+    Vx_true_start = np.zeros(N)
+    Vh_true_start = np.zeros(N)
+    V_abs_true_start = np.zeros(N)
+
+    last_k = -1
+
+    for k in range(N):
+
+        if k == 0:
+            x_true_start[k] = x_0
+            h_true_start[k] = h_0
+            Vx_true_start[k] = v0 * np.cos(alpha)
+            Vh_true_start[k] = v0 * np.sin(alpha)
+            V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
+
+        else:
+            mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_start[k - 1] / (R * T)))) / m
+            Vx_true_start[k] = Vx_true_start[k - 1] - (
+                    -mu_k[k] * np.sqrt(Vx_true_start[k - 1] ** 2 + Vh_true_start[k - 1] ** 2) * Vx_true_start[k - 1]) * \
+                               (t[k - 1] - t[k])
+            Vh_true_start[k] = Vh_true_start[k - 1] - (
+                    -g - mu_k[k] * np.sqrt(Vx_true_start[k - 1] ** 2 + Vh_true_start[k - 1] ** 2) * Vh_true_start[
+                k - 1]) * \
+                               (t[k - 1] - t[k])
+            V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
+            x_true_start[k] = x_true_start[k - 1] - Vx_true_start[k] * (t[k - 1] - t[k])
+            h_true_start[k] = h_true_start[k - 1] - Vh_true_start[k] * (t[k - 1] - t[k])
+
+    x_est = [k0, V_abs_true_start[last_k], dR, np.arctan(Vh_true_start[last_k] / Vx_true_start[last_k])]
+
+    return x_est
+
+
+# inital trajectory section assessment - inital start speed reactive
+def func_trajectory_start_react(xhy_0_set, x_est_top, t_meas, x_L, y_L, h_L, N):
+    xhy_0_start = xhy_0_set[0]
+    x_est_start = x_est_top[0]
+
+    k0 = x_est_start[0]
+    v0 = x_est_start[1]
+    dR = 0
+    alpha = x_est_start[3]
+
+    x_0 = 0
+    h_0 = 0
+
+    tmin = 0
+    tmax = t_meas[0]
+
+    vx_0_pas = v0 * np.cos(alpha)
+    vh_0_pas = v0 * np.sin(alpha)
+    a_x_sr = vx_0_pas / tmax
+    a_h_sr = vh_0_pas / tmax
+
+    t = []
+
+    n = 0
+    for i in range(N):
+        if i == 0:
+            n = 0
+        else:
+            n += (tmax - tmin) / (N - 1)
+        t.append(n)
+
+    x_true_start = np.zeros(N)
+    h_true_start = np.zeros(N)
+    Vx_true_start = np.zeros(N)
+    Vh_true_start = np.zeros(N)
+    Ax_true_start = np.zeros(N)
+    Ah_true_start = np.zeros(N)
+    R_true_start = np.zeros(N)
+    Vr_true_start = np.zeros(N)
+    theta_true_start = np.zeros(N)
+    V_abs_true_start = np.zeros(N)
+    alpha_true_start = np.zeros(N)
+    A_abs_true_start = np.zeros(N)
+
+    for k in range(N):
+
+        if k == 0:
+            x_true_start[k] = x_0
+            h_true_start[k] = h_0
+            Vx_true_start[k] = 0
+            Vh_true_start[k] = 0
+            Ax_true_start[k] = a_x_sr
+            Ah_true_start[k] = a_h_sr
+
+        else:
+            Ax_true_start[k] = Ax_true_start[k - 1]
+            Vx_true_start[k] = Vx_true_start[k - 1] + Ax_true_start[k] * (t[k] - t[k - 1])
+            x_true_start[k] = x_true_start[k - 1] + Vx_true_start[k] * (t[k] - t[k - 1])
+            Ah_true_start[k] = Ah_true_start[k - 1]
+            Vh_true_start[k] = Vh_true_start[k - 1] + Ah_true_start[k] * (t[k] - t[k - 1])
+            h_true_start[k] = h_true_start[k - 1] + Vh_true_start[k] * (t[k] - t[k - 1])
+
+        V_abs_true_start[k] = np.sqrt(Vx_true_start[k] ** 2 + Vh_true_start[k] ** 2)
+        A_abs_true_start[k] = np.sqrt(Ax_true_start[k] ** 2 + Ah_true_start[k] ** 2)
+        R_true_start[k] = np.sqrt((x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
+        Vr_true_start[k] = (Vx_true_start[k] * (x_true_start[k] - x_L) + Vh_true_start[k] * (
+                h_true_start[k] - h_L)) / np.sqrt(
+            (x_L - x_true_start[k]) ** 2 + y_L ** 2 + (h_L - h_true_start[k]) ** 2)
+        theta_true_start[k] = np.arctan((h_true_start[k] - h_L) / np.sqrt((x_true_start[k] - x_L) ** 2 + y_L ** 2))
+        alpha_true_start[k] = np.arctan(Vh_true_start[k] / Vx_true_start[k])
+
+    return t, x_true_start, h_true_start, R_true_start, Vr_true_start, theta_true_start, Vx_true_start, Vh_true_start, \
+           V_abs_true_start, alpha_true_start, A_abs_true_start, Ax_true_start, Ah_true_start
+
+
+# trajectory end
+def func_trajectory_end(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_end, Vh_tr_end, V_abs_tr_end, Ax_tr_end,
+                        Ah_tr_end, A_abs_tr_end, alpha_tr_end, t_meas, R_tr_end, Vr_tr_end, theta_tr_end, x_L, y_L, h_L,
+                        hei, N):
+    # hei - bullet shield height
+    dR = 0
+
+    V0 = V_abs_tr_end[-1][-1]
+    alpha0 = alpha_tr_end[-1][-1]
+    Vx0 = Vx_tr_end[-1][-1]
+    Vh0 = Vh_tr_end[-1][-1]
+
+    A0 = A_abs_tr_end[-1][-1]
+    Ax0 = Ax_tr_end[-1][-1]
+    Ah0 = Ah_tr_end[-1][-1]
+
+    R0 = R_tr_end[-1][-1]
+    Vr0 = Vr_tr_end[-1][-1]
+    theta0 = theta_tr_end[-1][-1]
+
+    x_0 = x_tr_end[-1][-1]
+    h_0 = h_tr_end[-1][-1]
+
+    tmin = t_meas[-1][-1]
+
+    tmax = 100
+
+    t = []
+    n = 0
+    for i in range(N):
+        if i == 0:
+            n = 0
+        else:
+            n += (tmax - tmin) / (N - 1)
+        t.append(n)
+
+    mu_k = np.zeros(N)
+    x_true_end = np.zeros(N)
+    h_true_end = np.zeros(N)
+    Vx_true_end = np.zeros(N)
+    Vh_true_end = np.zeros(N)
+    Ax_true_end = np.zeros(N)
+    Ah_true_end = np.zeros(N)
+    R_true_end = np.zeros(N)
+    Vr_true_end = np.zeros(N)
+    theta_true_end = np.zeros(N)
+    V_abs_true_end = np.zeros(N)
+    alpha_true_end = np.zeros(N)
+    A_abs_true_end = np.zeros(N)
+
+    last_k = N
+
+    for k in range(N):
+
+        if k == 0:
+            x_true_end[k] = x_0
+            h_true_end[k] = h_0
+            Vx_true_end[k] = Vx0
+            Vh_true_end[k] = Vh0
+            V_abs_true_end[k] = V0
+            R_true_end[k] = R0
+            theta_true_end[k] = theta0
+            Vr_true_end[k] = Vr0
+            alpha_true_end[k] = alpha0
+            Ax_true_end[k] = Ax0
+            Ah_true_end[k] = Ah0
+            A_abs_true_end[k] = A0
+
+        else:
+
+            # mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_end[k - 1] / (R * T)))) / m
+            mu_k[k] = 0.5 * Cx * (np.pi * r ** 2) * rho_0 / m
+            Vx_true_end[k] = Vx_true_end[k - 1] + (
+                    -mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vx_true_end[k - 1]) * \
+                             (t[k] - t[k - 1])
+            Vh_true_end[k] = Vh_true_end[k - 1] + (
+                    -g - mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vh_true_end[k - 1]) * \
+                             (t[k] - t[k - 1])
+            V_abs_true_end[k] = np.sqrt(Vx_true_end[k] ** 2 + Vh_true_end[k] ** 2)
+            x_true_end[k] = x_true_end[k - 1] + Vx_true_end[k] * (t[k] - t[k - 1])
+            h_true_end[k] = h_true_end[k - 1] + Vh_true_end[k] * (t[k] - t[k - 1])
+            R_true_end[k] = np.sqrt((x_L - x_true_end[k]) ** 2 + y_L ** 2 + (h_L - h_true_end[k]) ** 2) + dR
+            theta_true_end[k] = np.arctan((h_true_end[k] - h_L) / np.sqrt((x_true_end[k] - x_L) ** 2 + y_L ** 2))
+            Vr_true_end[k] = (Vx_true_end[k] * (x_true_end[k] - x_L) + Vh_true_end[k] * (
+                    h_true_end[k] - h_L)) / np.sqrt(
+                (x_L - x_true_end[k]) ** 2 + y_L ** 2 + (h_L - h_true_end[k]) ** 2)
+            alpha_true_end[k] = np.arctan(Vh_true_end[k] / Vx_true_end[k])
+            Ax_true_end[k] = (Vx_true_end[k] - Vx_true_end[k - 1]) / (t[k] - t[k - 1])
+            Ah_true_end[k] = (Vh_true_end[k] - Vh_true_end[k - 1]) / (t[k] - t[k - 1])
+            A_abs_true_end[k] = np.sqrt(Ax_true_end[k] ** 2 + Ah_true_end[k] ** 2)
+
+        if h_true_end[k] < hei:
+            last_k = k
+            break
+
+    return t[:last_k] + tmin, x_true_end[:last_k], h_true_end[:last_k], R_true_end[:last_k], \
+           Vr_true_end[:last_k], theta_true_end[:last_k], Vx_true_end[:last_k], \
+           Vh_true_end[:last_k], V_abs_true_end[:last_k], alpha_true_end[:last_k], A_abs_true_end[:last_k], \
+           Ax_true_end[:last_k], Ah_true_end[:last_k]
+
+
+def func_trajectory_end_two(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_tr_end, Vh_tr_end, V_abs_tr_end,
+                            Ax_tr_end,
+                            Ah_tr_end, A_abs_tr_end, alpha_tr_end, t_meas, R_tr_end, Vr_tr_end, theta_tr_end, x_L, y_L,
+                            h_L,
+                            hei, N):
+    # hei - bullet shield height
+    dR = 0
+
+    V0 = V_abs_tr_end[-1][-1]
+    alpha0 = alpha_tr_end[-1][-1]
+    Vx0 = Vx_tr_end[-1][-1]
+    Vh0 = Vh_tr_end[-1][-1]
+
+    A0 = A_abs_tr_end[-1][-1]
+    Ax0 = Ax_tr_end[-1][-1]
+    Ah0 = Ah_tr_end[-1][-1]
+
+    R0 = R_tr_end[-1][-1]
+    Vr0 = Vr_tr_end[-1][-1]
+    theta0 = theta_tr_end[-1][-1]
+
+    x_0 = x_tr_end[-1][-1]
+    h_0 = h_tr_end[-1][-1]
+
+    tmin = t_meas[-1][-1]
+
+    tmax = 100
+
+    t = []
+    n = 0
+    for i in range(N):
+        if i == 0:
+            n = 0
+        else:
+            n += (tmax - tmin) / (N - 1)
+        t.append(n)
+
+    mu_k = np.zeros(N)
+    x_true_end = np.zeros(N)
+    h_true_end = np.zeros(N)
+    Vx_true_end = np.zeros(N)
+    Vh_true_end = np.zeros(N)
+    Ax_true_end = np.zeros(N)
+    Ah_true_end = np.zeros(N)
+    R_true_end = np.zeros(N)
+    Vr_true_end = np.zeros(N)
+    theta_true_end = np.zeros(N)
+    V_abs_true_end = np.zeros(N)
+    alpha_true_end = np.zeros(N)
+    A_abs_true_end = np.zeros(N)
+
+    last_k = N
+
+    for k in range(N):
+
+        if k == 0:
+            x_true_end[k] = x_0
+            h_true_end[k] = h_0
+            Vx_true_end[k] = Vx0
+            Vh_true_end[k] = Vh0
+            V_abs_true_end[k] = V0
+            R_true_end[k] = R0
+            theta_true_end[k] = theta0
+            Vr_true_end[k] = Vr0
+            alpha_true_end[k] = alpha0
+            Ax_true_end[k] = Ax0
+            Ah_true_end[k] = Ah0
+            A_abs_true_end[k] = A0
+
+        else:
+
+            # mu_k[k] = (0.5 * Cx * (np.pi * r ** 2) * (rho_0 * np.exp(-M * g * h_true_end[k - 1] / (R * T)))) / m
+            mu_k[k] = 0.5 * Cx * (np.pi * r ** 2) * rho_0 / m
+            Vx_true_end[k] = Vx_true_end[k - 1] + (
+                    -mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vx_true_end[k - 1]) * \
+                             (t[k] - t[k - 1])
+            Vh_true_end[k] = Vh_true_end[k - 1] + (
+                    -g - mu_k[k] * np.sqrt(Vx_true_end[k - 1] ** 2 + Vh_true_end[k - 1] ** 2) * Vh_true_end[k - 1]) * \
+                             (t[k] - t[k - 1])
+            V_abs_true_end[k] = np.sqrt(Vx_true_end[k] ** 2 + Vh_true_end[k] ** 2)
+            x_true_end[k] = x_true_end[k - 1] + Vx_true_end[k] * (t[k] - t[k - 1])
+            h_true_end[k] = h_true_end[k - 1] + Vh_true_end[k] * (t[k] - t[k - 1])
+            R_true_end[k] = np.sqrt((x_L - x_true_end[k]) ** 2 + y_L ** 2 + (h_L - h_true_end[k]) ** 2) + dR
+            theta_true_end[k] = np.arctan((h_true_end[k] - h_L) / np.sqrt((x_true_end[k] - x_L) ** 2 + y_L ** 2))
+            Vr_true_end[k] = (Vx_true_end[k] * (x_true_end[k] - x_L) + Vh_true_end[k] * (
+                    h_true_end[k] - h_L)) / np.sqrt(
+                (x_L - x_true_end[k]) ** 2 + y_L ** 2 + (h_L - h_true_end[k]) ** 2)
+            alpha_true_end[k] = np.arctan(Vh_true_end[k] / Vx_true_end[k])
+            Ax_true_end[k] = (Vx_true_end[k] - Vx_true_end[k - 1]) / (t[k] - t[k - 1])
+            Ah_true_end[k] = (Vh_true_end[k] - Vh_true_end[k - 1]) / (t[k] - t[k - 1])
+            A_abs_true_end[k] = np.sqrt(Ax_true_end[k] ** 2 + Ah_true_end[k] ** 2)
+
+        if h_true_end[k] < hei:
+            last_k = k
+            break
+
+    # только для активно реактивного
+    deltaVr = Vr_true_end[0] - Vr_true_end[1]
+    Vr_true_end[1:] = Vr_true_end[1:] + deltaVr
+
+    return t[:last_k] + tmin, x_true_end[:last_k], h_true_end[:last_k], R_true_end[:last_k], \
+           Vr_true_end[:last_k], theta_true_end[:last_k], Vx_true_end[:last_k], \
+           Vh_true_end[:last_k], V_abs_true_end[:last_k], alpha_true_end[:last_k], A_abs_true_end[:last_k], \
+           Ax_true_end[:last_k], Ah_true_end[:last_k]
+
+
+# def traj_bullet_meas(R_meas, Vr_meas, theta_meas, dR, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_sound, rho_0, r,
+#                      sigma_ksi_x, sigma_ksi_h, sigma_ksi_y, sigma_n_R, sigma_n_Vr, sigma_n_theta, sigma_n_y, sigma_n_Ax,
+#                      sigma_n_Ah):
+#     i_f = 0.5
+#
+#     x_est_prev = x_est_init
+#     dx_est_prev = np.eye(9)
+#
+#     x_est_stor = []
+#     x_est_stor.append(x_est_init)
+#
+#     dx_est_stor = []
+#     dT_stor = []
+#
+#     Mach, Cx, p_coefs = coeff_mach()
+#
+#     D_ksi = np.array([[sigma_ksi_x ** 2, 0, 0], [0, sigma_ksi_h ** 2, 0], [0, 0, sigma_ksi_y ** 2]])
+#     I = np.eye(3)
+#
+#     H = np.array([[1, 0, 0], [0, 1, 0]])
+#     Dn = np.array([[sigma_n_R ** 2, 0, 0, 0, 0, 0],
+#                    [0, sigma_n_Vr ** 2, 0, 0, 0, 0],
+#                    [0, 0, sigma_n_theta ** 2, 0, 0, 0],
+#                    [0, 0, 0, sigma_n_y ** 2, 0, 0],
+#                    [0, 0, 0, 0, sigma_n_Ax ** 2, 0],
+#                    [0, 0, 0, 0, 0, sigma_n_Ah ** 2]])
+#
+#     y_ext_init = [np.sqrt((x_est_prev[0] - x_L) ** 2 + (x_est_prev[6] - y_L) ** 2 + (x_est_prev[3] - h_L) ** 2),
+#     (x_est_prev[1] * (x_est_prev[0] - x_L) + x_est_prev[4] * (x_est_prev[3] - h_L) + x_est_prev(8) * (
+#                 x_est_prev[6] - y_L)) / sqrt(
+#         (x_est_prev[0] - x_L) ** 2 + (x_est_prev[6] - y_L) ** 2 + (x_est_prev[3] - h_L) ** 2),
+#     np.arcsin((x_est_prev[3] - h_L) / sqrt(
+#         (x_est_prev[0] - x_L) ** 2 + (x_est_prev[6] - y_L) ** 2 + (x_est_prev[3] - h_L) ** 2)),
+#     x_est_prev[6],
+#     x_est_prev[2],
+#     x_est_prev[5]]
+#
+#     y_est_stor = []
+#     y_est_stor.append(y_ext_init)
+#
+#     dT = 0
+#
+#     Ax_upr = np.zeros(len(t_meas))
+#     Ah_upr = np.zeros(len(t_meas))
+#     Vx_upr = np.zeros(len(t_meas))
+#     Vh_upr = np.zeros(len(t_meas))
+#
+#     Ax_upr[0] = x_est_prev[2]
+#     Ah_upr[0] = x_est_prev[5]
+#     Vx_upr[0] = x_est_prev[1]
+#     Vh_upr[0] = x_est_prev[4]
+#
+#     for k in range(1, len(t_meas)):
+#         Vx_upr[k] = Vx_upr[k - 1] + Ax_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
+#         Vh_upr[k] = Vh_upr[k - 1] + Ah_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
+#         V_cur = np.sqrt(Vx_upr[k] ** 2 + Vh_upr[k] ** 2)
+#         Cx_int = interpolate.interp1d(Mach, Cx, V_cur / V_sound)
+#         As = (rho_0 * (np.pi * r ** 2 / 2) * (V_cur ** 2 / 2) * Cx_int * i_f) / m
+#         Ax_upr[k] = - As * np.cos(np.arctan(Vh_upr[k] / Vx_upr[k]))
+#         Ah_upr[k] = - As * np.sin(np.arctan(Vh_upr[k] / Vx_upr[k])) - g
+#
+#         dT = t_meas[k] - t_meas[k - 1]
+#
+#         x_ext(2, 1) = x_est_prev(2) + x_est_prev(3) * dT
+#         x_ext(5, 1) = x_est_prev(5) + x_est_prev(6) * dT
+#         x_ext(8, 1) = x_est_prev(8) + x_est_prev(9) * dT
+#
+#         x_ext(1, 1) = x_est_prev(1) + x_est_prev(2) * dT
+#         x_ext(3, 1) = x_est_prev(3) + (Ax_upr[k] - Ax_upr[k - 1])
+#         x_ext(4, 1) = x_est_prev(4) + x_est_prev(5) * dT
+#         x_ext(6, 1) = x_est_prev(6) + (Ah_upr[k] - Ah_upr[k - 1])
+#         x_ext(7, 1) = x_est_prev(7) + x_est_prev(8) * dT
+#         x_ext(9, 1) = x_est_prev(9)
+#
+#         # в матрицы
+#         Dx_ext = dfdt * Dx_est_prev * dfdt.T + G*D_ksi*G.T
+#
+#         H(1,:) = [(x_ext(1) - x_L) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) 0
+#                   0(x_ext(4) - h_L) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) 0
+#                   0(x_ext(7) - y_L) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) 0 0];
+#         H(2,:) = zeros(1, 9);
+#         H(2, 1) = x_ext(2) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) - (x_ext(1) - x_L) * (
+#                     x_ext(2) * (x_ext(1) - x_L) + x_ext(5) * (x_ext(4) - h_L) + x_ext(8) * (x_ext(7) - y_L)) / (
+#                               (x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) ^ 1.5;
+#         H(2, 4) = x_ext(5) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) - (x_ext(4) - h_L) * (
+#                     x_ext(2) * (x_ext(1) - x_L) + x_ext(5) * (x_ext(4) - h_L) + x_ext(8) * (x_ext(7) - y_L)) / (
+#                               (x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) ^ 1.5;
+#         H(2, 7) = x_ext(8) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) - (x_ext(7) - y_L) * (
+#                     x_ext(2) * (x_ext(1) - x_L) + x_ext(5) * (x_ext(4) - h_L) + x_ext(8) * (x_ext(7) - y_L)) / (
+#                               (x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) ^ 1.5;
+#         H(2, 2) = (x_ext(1) - x_L) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2);
+#         H(2, 5) = (x_ext(4) - h_L) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2);
+#         H(2, 8) = (x_ext(7) - y_L) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2);
+#         H(3,:) = zeros(1, 9);
+#         H(3, 1) = (x_ext(4) - h_L) * (x_ext(1) - x_L) / (
+#                     sqrt(1 - (x_ext(4) - h_L) ^ 2 / ((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2)) * (
+#                         (x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) ^ 1.5);
+#         H(3, 4) = (((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) ^ -0.5 - (x_ext(4) - h_L) ^ 2 / (
+#                     (x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) ^ 1.5) / sqrt(
+#             1 - (x_ext(4) - h_L) ^ 2 / ((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2));
+#         H(3, 7) = (x_ext(4) - h_L) * (x_ext(7) - y_L) / (
+#                     sqrt(1 - (x_ext(4) - h_L) ^ 2 / ((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2)) * (
+#                         (x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2) ^ 1.5);
+#         H(4,:) = [0 0 0 0 0 0 1 0 0]
+#         H(5,:) = [0 0 1 0 0 0 0 0 0]
+#         H(6,:) = [0 0 0 0 0 1 0 0 0]
+#
+#
+#         S = H * Dx_ext * H.T + Dn
+#         K = Dx_ext * H.T *S^-1
+#
+#
+#         y_ext = [sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2);
+#         (x_ext(2) * (x_ext(1) - x_L) + x_ext(5) * (x_ext(4) - h_L) + x_ext(8) * (x_ext(7) - y_L)) / sqrt(
+#             (x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2)
+#         asin((x_ext(4) - h_L) / sqrt((x_ext(1) - x_L) ^ 2 + (x_ext(7) - y_L) ^ 2 + (x_ext(4) - h_L) ^ 2));
+#         x_ext(7);
+#         x_ext(3);
+#         x_ext(6)];
+#
+#
+#
+#         y_ext_stor.append(y_ext)
+#
+#         x_est_prev = x_ext + K * ([y_meas_set(:, k); Ax_upr[k]; Ah_upr[k]] - y_ext);
+#         Dx_est_prev = (I - K * H) * Dx_ext;
+#         x_est_stor.append(x_est_prev)
+#
+#
+#
+#
+# def coeff_mach():
+#     Mach = np.linspace(0, 10, num=100)
+#     Cx = np.zeros(len(Mach))
+#     p_coefs = [
+#         [0.152771, 0.10637696, - 0.96427713, 3.6199726, - 1.9654533, - 27.242367, 90.655386, - 125.97662, 82.217524,
+#          - 20.27831], [- 33.922171, 138.13302, - 241.36463, 240.68268, - 151.12465, 61.994669, - 16.623869, 2.811659,
+#                        - 0.27238548,
+#                        0.011525579]]
+#
+#     for k in range(len(Mach)):
+#         if Mach[k] <= 0.1:
+#             Cx[k] = p_coefs[0][0] + p_coefs[0][1] * 0.1 + p_coefs[0][2] * 0.1 ** 2 + p_coefs[0][3] * 0.1 ** 3 + \
+#                     p_coefs[0][4] * 0.1 ** 4 \
+#                     + p_coefs[0][5] * 0.1 ** 5 + p_coefs[0][6] * 0.1 ** 6 + p_coefs[0][7] * 0.1 ** 7 + \
+#                     p_coefs[0][8] * 0.1 ** 8 + p_coefs[0][9] * 0.1 ** 9
+#         elif Mach[k] <= 1 and Mach[k] > 0.1:
+#             Cx[k] = p_coefs[0][0] + p_coefs[0][1] * Mach[k] + p_coefs[0][2] * Mach[k] ** 2 + p_coefs[0][3] * Mach[
+#                 k] ** 3 + \
+#                     p_coefs[0][4] * Mach[k] ** 4 \
+#                     + p_coefs[0][5] * Mach[k] ** 5 + p_coefs[0][6] * Mach[k] ** 6 + p_coefs[0][7] * Mach[k] ** 7 + \
+#                     p_coefs[0][8] * Mach[k] ** 8 + p_coefs[0][9] * Mach[k] ** 9
+#         elif Mach[k] <= 3.6 and Mach[k] > 1:
+#             Cx[k] = p_coefs[1][0] + p_coefs[1][1] * Mach[k] + p_coefs[1][2] * Mach[k] ** 2 + p_coefs[1][3] * Mach[
+#                 k] ** 3 + \
+#                     p_coefs[1][4] * Mach[k] ** 4 \
+#                     + p_coefs[1][5] * Mach[k] ** 5 + p_coefs[1][6] * Mach[k] ** 6 + p_coefs[1][7] * Mach[k] ** 7 + \
+#                     p_coefs[1][8] * Mach[k] ** 8 + p_coefs[1][9] * Mach[k] ** 9
+#         else:
+#             Cx[k] = p_coefs[1][0] + p_coefs[1][1] * 3.6 + p_coefs[1][2] * 3.6 ** 2 + p_coefs[1][3] * 3.6 ** 3 + \
+#                     p_coefs[1][4] * 3.6 ** 4 \
+#                     + p_coefs[1][5] * 3.6 ** 5 + p_coefs[1][6] * 3.6 ** 6 + p_coefs[1][7] * 3.6 ** 7 + \
+#                     p_coefs[1][8] * 3.6 ** 8 + p_coefs[1][9] * 3.6 ** 9
+#
+#     return Mach, Cx, p_coefs
+#
+#
+# # trajectory end
+# def func_trajectory_new(x_est, Vx_est, Ax_est, h_est, Vh_est, Ah_est, y_est, Vy_est, Ay_est, t_meas_est,
+#                         r, rho_0, m, g, K_inch, K_gran, K_fut, d, l, eta, v0, V_sound):
+#     i_f = 0.5
+#     T_step = 0.05
+#
+#     x = []
+#     Vx = []
+#     Ax = []
+#     h = []
+#     Vh = []
+#     Ah = []
+#     y = []
+#     Vy = []
+#     Ay = []
+#     t = []
+#
+#     i_f = 0.5
+#     T_step = 0.05
+#
+#     eta = eta / d
+#     l_cal = l / d
+#     d_inch = d * K_inch
+#     m_gran = m * K_gran
+#     Sg = (30 * m_gran) / (eta ** 2 * d_inch ** 3 * l_cal * (1 + l_cal ** 2))
+#     Sg_corr = Sg * ((v0 * K_fut) / 2800) ** (1 / 3)
+#
+#     Mach, Cx, p_coefs = coeff_mach()
+#
+#     x.append(x_est[-1])
+#     Vx.append(Vx_est[-1])
+#     Ax.append(Ax_est[-1])
+#     h.append(h_est[-1])
+#     Vh.append(Vh_est[-1])
+#     Ah.append(Ah_est[-1])
+#     y.append(y_est[-1])
+#     Vy.append(Vy_est[-1])
+#     Ay.append(Ay_est[-1])
+#     t.append(t_meas_est[-1])
+#
+#     k = 0
+#     while h[k] > 0:
+#         k = k + 1
+#
+#         t.append(t_meas_est[k - 1] + T_step)
+#         x.append(x[k - 1] + Vx[k - 1] * T_step)
+#         h.append(h[k - 1] + Vh[k - 1] * T_step)
+#         Vx.append(Vx[k - 1] + Ax[k - 1] * T_step)
+#         Vh.append(Vh[k - 1] + Ah[k - 1] * T_step)
+#         y.append((1.25 * (Sg_corr + 1.2) * t[k] ** 1.83) / K_inch)
+#         Vy.append(Vy[k])
+#         Ay.append(Ay[k])
+#         V_cur = np.sqrt(Vx[k] ** 2 + Vh[k] ** 2)
+#         Cx_int = interpolate.interp1d(Mach, Cx, V_cur / V_sound)
+#         As = (rho_0 * (np.pi * r ** 2 / 2) * (V_cur ** 2 / 2) * Cx_int * i_f) / m
+#         Ax.append(-As * np.cos(np.arctan(Vh[k] / Vx[k])))
+#         Ah.append(-As * np.sin(np.arctan(Vh[k] / Vx[k])) - g)
+
+
+# linear piece estimation error
+def func_linear_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_true_start, x_true_fin, h_true_fin,
+                                       window_set, t_meas, R_meas, Vr_meas,
+                                       theta_meas, m, g, x_L, y_L, h_L):
+    t_err_plot = []
+    R_er_plot = []
+    Vr_er_plot = []
+    theta_er_plot = []
+    R_est_full_plot = []
+    Vr_est_full_plot = []
+    theta_est_full_plot = []
+    R_est_err_plot = []
+    Vr_est_err_plot = []
+    theta_est_err_plot = []
+
+    R_meas = R_meas[(len(R_meas) - len(t_meas)):]
+    Vr_meas = R_meas[(len(Vr_meas) - len(t_meas)):]
+    theta_meas = R_meas[(len(theta_meas) - len(t_meas)):]
+
+    for s in range(len(x_est_top)):
+
+        if s == (len(x_est_top) - 1):
+
+            t = t_meas[window_set[s][0] - 1:]
+            R_er = R_meas[window_set[s][0] - 1:]
+            Vr_er = Vr_meas[window_set[s][0] - 1:]
+            theta_er = theta_meas[window_set[s][0] - 1:]
+            tmin = t[0]
+
+        else:
+
+            t = t_meas[window_set[s][0] - 1:window_set[s + 1][0] - 1]
+            R_er = R_meas[window_set[s][0] - 1:window_set[s + 1][0] - 1]
+            Vr_er = Vr_meas[window_set[s][0] - 1:window_set[s + 1][0] - 1]
+            theta_er = theta_meas[window_set[s][0] - 1:window_set[s + 1][0] - 1]
+            tmin = t[0]
+
+        if s == 0:
+            x_0 = x_true_start[-1]
+            h_0 = h_true_start[-1]
+
+        else:
+            x_0 = x_true_fin[s - 1][-1]
+            h_0 = h_true_fin[s - 1][-1]
+
+        t_err_plot.append(t)
+        R_er_plot.append(R_er)
+        Vr_er_plot.append(Vr_er)
+        theta_er_plot.append(theta_er)
+        t = t - tmin
+
+        R_est_full = np.zeros(len(t))
+        theta_est_full = np.zeros(len(t))
+        Vr_est_full = np.zeros(len(t))
+
+        R_est_err = np.zeros(len(t))
+        theta_est_err = np.zeros(len(t))
+        Vr_est_err = np.zeros(len(t))
+
+        k0 = x_est_top[s][0]
+        v0 = x_est_top[s][1]
+        dR = 0
+        alpha = x_est_top[s][3]
+
+        for k in range(len(t)):
+            R_est_full[k] = np.sqrt(
+                (x_L - ((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0)) ** 2 +
+                y_L ** 2 + (h_L - ((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
+                                   (1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0)) ** 2) + dR
+
+            theta_est_full[k] = np.arctan((((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
+                                            (1 - np.exp(-k0 * t[k] / m)) - (m * g * t[k]) / k0 + h_0) - h_L) / np.sqrt(
+                (((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0) - x_L) ** 2 + y_L ** 2))
+
+            Vr_est_full[k] = ((v0 * np.exp(-k0 * t[k] / m) * np.cos(alpha)) *
+                              (((m / k0) * v0 * np.cos(alpha) * (1 - np.exp(-k0 * t[k] / m)) + x_0) - x_L) +
+                              (v0 * np.sin(alpha) * np.exp(-k0 * t[k] / m) - (m * g / k0) *
+                               (1 - np.exp(-k0 * t[k] / m))) * (((m / k0) * (v0 * np.sin(alpha) + (m * g) / k0) *
+                                                                 (1 - np.exp(-k0 * t[k] / m)) - (
+                                                                         m * g * t[k]) / k0 + h_0) - h_L)) / \
+                             np.sqrt((x_L - ((m / k0) * v0 * np.cos(alpha) *
+                                             (1 - np.exp(-k0 * t[k] / m)) + x_0)) ** 2 + y_L ** 2 + (h_L - ((m / k0) *
+                                                                                                            (
+                                                                                                                    v0 * np.sin(
+                                                                                                                alpha) + (
+                                                                                                                            m * g) / k0) * (
+                                                                                                                    1 - np.exp(
+                                                                                                                -k0 *
+                                                                                                                t[
+                                                                                                                    k] / m)) - (
+                                                                                                                    m * g *
+                                                                                                                    t[
+                                                                                                                        k]) / k0 + h_0)) ** 2)
+
+            R_est_err[k] = R_est_full[k] - R_er[k]
+            Vr_est_err[k] = Vr_est_full[k] - Vr_er[k]
+            theta_est_err[k] = theta_est_full[k] - theta_er[k]
+
+        R_est_full_plot.append(R_est_full)
+        Vr_est_full_plot.append(Vr_est_full)
+        theta_est_full_plot.append(theta_est_full)
+
+        R_est_err_plot.append(R_est_err)
+        Vr_est_err_plot.append(Vr_est_err)
+        theta_est_err_plot.append(theta_est_err)
+
+    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
+
+
+# quad piece estimation error
+def func_quad_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_true_start, x_true_fin, h_true_fin,
+                                     window_set, t_meas, R_meas, Vr_meas, theta_meas,
+                                     m, g, x_L, y_L, h_L):
+    t_err_plot = []
+    R_er_plot = []
+    Vr_er_plot = []
+    theta_er_plot = []
+
+    R_est_full_plot = []
+    Vr_est_full_plot = []
+    theta_est_full_plot = []
+
+    R_est_err_plot = []
+    Vr_est_err_plot = []
+    theta_est_err_plot = []
+
+    R_meas = R_meas[(len(R_meas) - len(t_meas)):]
+    Vr_meas = Vr_meas[(len(Vr_meas) - len(t_meas)):]
+    theta_meas = theta_meas[(len(theta_meas) - len(t_meas)):]
+
+    for s in range(len(x_est_top)):
+
+        if s == (len(x_est_top) - 1):
+
+            t = t_meas[window_set[s][0] - 1:]
+            R_er = R_meas[window_set[s][0] - 1:]
+            Vr_er = Vr_meas[window_set[s][0] - 1:]
+            theta_er = theta_meas[window_set[s][0] - 1:]
+            tmin = t[0]
+
+        else:
+
+            t = t_meas[window_set[s][0] - 1:window_set[s + 1][0] - 1]
+            R_er = R_meas[window_set[s][0] - 1:window_set[s + 1][0] - 1]
+            Vr_er = Vr_meas[window_set[s][0] - 1:window_set[s + 1][0] - 1]
+            theta_er = theta_meas[window_set[s][0] - 1:window_set[s + 1][0] - 1]
+            tmin = t[0]
+
+        t_err_plot.append(t)
+        R_er_plot.append(R_er)
+        Vr_er_plot.append(Vr_er)
+        theta_er_plot.append(theta_er)
+        t = t - tmin
+
+        if s == 0:
+            x_0 = x_true_start[-1]
+            h_0 = h_true_start[-1]
+
+        else:
+            x_0 = x_true_fin[s - 1][-1]
+            h_0 = h_true_fin[s - 1][-1]
+
+        R_est_full = np.zeros(len(t))
+        theta_est_full = np.zeros(len(t))
+        Vr_est_full = np.zeros(len(t))
+
+        R_est_err = np.zeros(len(t))
+        theta_est_err = np.zeros(len(t))
+        Vr_est_err = np.zeros(len(t))
+
+        k0 = x_est_top[s][0]
+        v0 = x_est_top[s][1]
+        dR = 0
+        alpha = x_est_top[s][3]
+
+        for k in range(len(t)):
+            R_est_full[k] = np.sqrt((x_L - (x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L + (
+                                            h_L - (
+                                            h_0 + (m / k0) * np.log(
+                                        np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(
+                                            k0 / (m * g)) * v0 * np.sin(
+                                            alpha) * np.sin(
+                                            t[k] * np.sqrt(k0 * g / m))))) ** 2) + dR
+
+            theta_est_full[k] = np.arctan(((h_0 + (m / k0) * np.log(
+                np.cos(t[k] * np.sqrt(k0 * g / m)) + np.sqrt(k0 / (m * g)) * v0 * np.sin(
+                    alpha) * np.sin(t[k] * np.sqrt(k0 * g / m)))) - h_L) / np.sqrt((x_L - (
+                    x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m))) ** 2 + y_L ** 2))
+
+            Vr_est_full[k] = ((v0 * np.cos(alpha) * ((x_0 + (m / k0) * np.log(
+                1 + (k0 * v0 * t[k] * np.cos(alpha)) / m)) - x_L)) / (1 + (
+                    k0 * t[k] * v0 * np.cos(alpha)) / m) + ((np.sqrt(
+                m * g * k0) * v0 * np.sin(alpha) - m * g * np.tan(
+                np.sqrt(k0 * g / m) * t[k])) / (np.sqrt(m * g * k0) + k0 *
+                                                v0 * np.sin(
+                        alpha) * np.tan(np.sqrt(k0 * g / m) * t[k]))) * (
+                                      (h_0 + (m / k0) * np.log(
+                                          np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
+                                              k0 / (m * g)) * v0 * np.sin(
+                                              alpha) * np.sin(
+                                              np.sqrt(k0 * g / m) * t[k]))) - h_L)) / (
+                                 np.sqrt((x_L - (
+                                         x_0 + (m / k0) * np.log(
+                                     1 + (k0 * v0 * t[k] * np.cos(
+                                         alpha)) / m))) ** 2 + y_L ** 2 + (h_L - (
+                                         h_0 + (m / k0) * np.log(
+                                     np.cos(np.sqrt(k0 * g / m) * t[k]) + np.sqrt(
+                                         k0 / (m * g)) * v0 * np.sin(
+                                         alpha) * np.sin(
+                                         np.sqrt(k0 * g / m) * t[k])))) ** 2))
+
+            R_est_err[k] = R_est_full[k] - R_er[k]
+            Vr_est_err[k] = Vr_est_full[k] - Vr_er[k]
+            theta_est_err[k] = theta_est_full[k] - theta_er[k]
+
+        R_est_full_plot.append(R_est_full)
+        Vr_est_full_plot.append(Vr_est_full)
+        theta_est_full_plot.append(theta_est_full)
+
+        R_est_err_plot.append(R_est_err)
+        Vr_est_err_plot.append(Vr_est_err)
+        theta_est_err_plot.append(theta_est_err)
+
+    return R_est_err_plot, Vr_est_err_plot, theta_est_err_plot
+
+
+def func_std_error_meas(track_meas, R_est_err_plot, Vr_est_err_plot,
                         theta_est_err_plot,
                         sko_R_tz, sko_Vr_tz, sko_theta_tz):
     R_true = []
@@ -2655,7 +3262,7 @@ def func_std_error_meas(track_meas, t_err_plot, R_er_plot, Vr_er_plot, theta_er_
     SKO_theta_true = np.std(np.array(theta_true))
 
     # return the measurement vector, flag valid
-    for i in range(len(track_meas["points"])):
+    for i in range(len(validR)):
         track_meas["points"][i]["saEpsilon"] = SKO_theta_true
         track_meas["points"][i]["validEpsilon"] = validTheta[i]
         track_meas["points"][i]["saR"] = SKO_R_true
@@ -2814,8 +3421,10 @@ def func_active_reactive_trajectory(x_tr_er_1, h_tr_er_1, t_meas_1, Vx_tr_er_1, 
            Vh_tr_act_est, V_abs_tr_act_est, alpha_tr_act_est, A_abs_tr_act_est, Ax_tr_act_est, Ah_tr_act_est
 
 
-# derivation for casings
-def func_derivation(K1, K2, x_fin, v0, alpha):
+# derivation for cnp.arcsings
+def func_derivation(K1, K2, x_fin, x_est_start):
+    v0 = x_est_start[1]
+    alpha = x_est_start[3]
     z_deriv = (K1 + K2 * x_fin) * v0 ** 2 * np.sin(alpha) ** 2
     return z_deriv
 
@@ -2833,7 +3442,9 @@ def func_derivation_bullet(m, d, l, eta, K_inch, K_gran, K_fut, v0, t_pol):
 
 
 # wind accounting
-def func_wind(t_fin, x_fin, v0, alpha, wind_module, wind_direction, az):
+def func_wind(t_fin, x_fin, x_est_start, wind_module, wind_direction, az):
+    v0 = x_est_start[1]
+    alpha = x_est_start[3]
     Aw = np.deg2rad(az) - (np.deg2rad(wind_direction) + np.pi)
     Wz = wind_module * np.sin(Aw)
     z_wind = Wz * (t_fin - x_fin / (v0 / np.cos(alpha)))
@@ -2897,85 +3508,3 @@ def calculate_ellipse(x, y, a, b, angle, steps):
     Y = y + (a * cosalpha * sinbeta + b * sinalpha * cosbeta)
 
     return X, Y
-
-# def sampling_points(points, TD):
-#     t = []
-#     x = []
-#     y = []
-#     z = []
-#     V = []
-#     Vx = []
-#     Vy = []
-#     Vz = []
-#     A = []
-#     Ax = []
-#     Ay = []
-#     Az = []
-#     C = []
-#     alpha = []
-#     dR = []
-#     AzR = []
-#     VrR = []
-#     EvR = []
-#
-#     for i in range(len(points)):
-#         t.append(points[i]["t"])
-#         x.append(points[i]["x"])
-#         y.append(points[i]["y"])
-#         z.append(points[i]["z"])
-#         V.append(points[i]["V"])
-#         Vx.append(points[i]["Vx"])
-#         Vy.append(points[i]["Vy"])
-#         Vz.append(points[i]["Vz"])
-#         A.append(points[i]["A"])
-#         Ax.append(points[i]["Ax"])
-#         Ay.append(points[i]["Ay"])
-#         Az.append(points[i]["Az"])
-#         C.append(points[i]["C"])
-#         alpha.append(points[i]["alpha"])
-#         dR.append(points[i]["DistanceR"])
-#         AzR.append(points[i]["AzR"])
-#         VrR.append(points[i]["VrR"])
-#         EvR.append(points[i]["EvR"])
-#
-#     tsampling = np.arange(t[0], t[-1], TD)
-#
-#     newlen = len(tsampling)
-#     oldlen = len(t)
-#
-#     K = oldlen / newlen
-#     K = int(K)
-#
-#     if K > 0:
-#
-#         td = t[0:oldlen:K]
-#         xd = x[0:oldlen:K]
-#         yd = y[0:oldlen:K]
-#         zd = z[0:oldlen:K]
-#         Vd = V[0:oldlen:K]
-#         Vxd = Vx[0:oldlen:K]
-#         Vyd = Vy[0:oldlen:K]
-#         Vzd = Vz[0:oldlen:K]
-#         Ad = A[0:oldlen:K]
-#         Axd = Ax[0:oldlen:K]
-#         Ayd = Ay[0:oldlen:K]
-#         Azd = Az[0:oldlen:K]
-#         Cd = C[0:oldlen:K]
-#         alphad = alpha[0:oldlen:K]
-#         dRd = dR[0:oldlen:K]
-#         AzRd = AzR[0:oldlen:K]
-#         VrRd = VrR[0:oldlen:K]
-#         EvRd = EvR[0:oldlen:K]
-#
-#         points = []
-#
-#         for i in range(len(td)):
-#             points.append({"t": td[i], "x": xd[i], "y": yd[i],
-#                            "z": zd[i], "V": Vd[i], "Vx": Vxd[i],
-#                            "Vy": Vyd[i], "Vz": Vzd[i], "A": Ad[i],
-#                            "Ax": Axd[i], "Ay": Ayd[i], "Az": Azd[i], "C": Cd[i],
-#                            "alpha": alphad[i],
-#                            "DistanceR": dRd[i], "AzR": AzRd[i],
-#                            "VrR": VrRd[i], "EvR": EvRd[i]})
-#
-#     return points
