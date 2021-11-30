@@ -1,12 +1,10 @@
 import numpy as np
 import ctypes
 import traceback
-from cmath import sqrt
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from scipy import interpolate
 import math
-
 
 import time, sys
 
@@ -2766,6 +2764,40 @@ def func_trajectory_end_two(Cx, r, rho_0, M, R, T, m, g, x_tr_end, h_tr_end, Vx_
            Ax_true_end[:last_k], Ah_true_end[:last_k]
 
 
+def delta_R_calculation(t_meas, R_meas, Vr_meas, theta_meas, m, g, alpha, x_L, y_L, h_L):
+    x_0 = 0
+    y_0 = 0
+    h_0 = 0
+    k_st = 8e-6
+
+    absV_1meas = Vr_meas[0] / np.cos(np.arctan(y_L / x_L))
+    Vx_1meas = absV_1meas * np.cos(alpha)
+    V0_1meas = Vx_1meas / (np.cos(alpha) * (1 - Vx_1meas * t_meas[0] * k_st / m))
+
+    R_est_1meas = np.sqrt(
+        (x_L - (x_0 + (m / k_st) * np.log(1 + (k_st * V0_1meas * t_meas[0] * np.cos(alpha)) / m))) ** 2 + y_L + (
+                h_L - (h_0 + (m / k_st) * np.log(np.cos(t_meas[0] * np.sqrt(k_st * g / m)) + np.sqrt(
+            k_st / (m * g)) * V0_1meas * np.sin(alpha) * np.sin(t_meas[0] * np.sqrt(k_st * g / m))))) ** 2)
+
+    delta_R_calc = R_est_1meas - R_meas[0]
+
+    return delta_R_calc
+
+
+def func_lsm_processing(t_meas, R_meas, Vr_meas, theta_meas, alpha, g):
+    meas_for_lsm = [0, 1, 2, 3, 4, 5]
+    Rh = R_meas[meas_for_lsm] * np.sin(theta_meas[meas_for_lsm])
+    Rx = np.sqrt(R_meas[meas_for_lsm] ** 2 - Rh ** 2)
+    V_apr = (Vr_meas[meas_for_lsm] * R_meas[meas_for_lsm]) / (np.cos(alpha) * Rx + np.sin(alpha) * Rh)
+    t_lsm = t_meas[meas_for_lsm]
+    out_LSM_V = func_lsm_kubic(t_lsm, V_apr)
+    V0_abs_lsm = out_LSM_V[0]
+    A_abs_lsm = out_LSM_V[1]
+    gamma_lsm = np.arctan(np.tan(alpha) - g / A_abs_lsm[0])
+
+    return V0_abs_lsm, A_abs_lsm, gamma_lsm
+
+
 def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_sound, rho_0, r,
                      sigma_ksi_x, sigma_ksi_h, sigma_ksi_y, sigma_n_R, sigma_n_Vr, sigma_n_theta, sigma_n_y, sigma_n_Ax,
                      sigma_n_Ah):
@@ -2780,7 +2812,7 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
     Mach, Cx, p_coefs = coeff_mach(1000)
 
     D_ksi = np.array([[sigma_ksi_x ** 2, 0, 0], [0, sigma_ksi_h ** 2, 0], [0, 0, sigma_ksi_y ** 2]])
-    I = np.eye(3)
+    I = np.eye(9)
 
     Dn = np.array([[sigma_n_R ** 2, 0, 0, 0, 0, 0],
                    [0, sigma_n_Vr ** 2, 0, 0, 0, 0],
@@ -2813,7 +2845,6 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
     Vh_upr[0] = x_est_prev[4]
 
     for k in range(1, len(t_meas)):
-
         Vx_upr[k] = Vx_upr[k - 1] + Ax_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
         Vh_upr[k] = Vh_upr[k - 1] + Ah_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
         V_cur = np.sqrt(Vx_upr[k] ** 2 + Vh_upr[k] ** 2)
@@ -2854,45 +2885,45 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
 
         H = []
 
-        H.append([(x_ext[0] - x_L) / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2), 0,
-                  0, (x_ext[3] - h_L) / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2), 0,
-                  0, (x_ext[6] - y_L) / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2), 0,
+        H.append([(x_ext[0] - x_L) / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2), 0,
+                  0, (x_ext[3] - h_L) / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2),
+                  0,
+                  0, (x_ext[6] - y_L) / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2),
+                  0,
                   0])
-
-        H.append([0, 0, 0, 0, 0, 0, 0, 0, 0])
 
         H3 = np.zeros(9)
 
-        H3[0] = x_ext[1] / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) - (
+        H3[0] = x_ext[1] / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) - (
                 x_ext[0] - x_L) * (
                         x_ext[1] * (x_ext[0] - x_L) + x_ext[4] * (x_ext[3] - h_L) + x_ext[7] * (x_ext[6] - y_L)) / (
-                        (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5,
-        H3[3] = x_ext[4] / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) - (
+                        (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5
+        H3[3] = x_ext[4] / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) - (
                 x_ext[3] - h_L) * (
                         x_ext[1] * (x_ext[0] - x_L) + x_ext[4] * (x_ext[3] - h_L) + x_ext[7] * (x_ext[6] - y_L)) / (
-                        (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5,
-        H3[6] = x_ext[7] / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) - (
+                        (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5
+        H3[6] = x_ext[7] / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) - (
                 x_ext[6] - y_L) * (
                         x_ext[1] * (x_ext[0] - x_L) + x_ext[4] * (x_ext[3] - h_L) + x_ext[7] * (x_ext[6] - y_L)) / (
-                        (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5,
-        H3[1] = (x_ext[0] - x_L) / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2),
-        H3[4] = (x_ext[3] - h_L) / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2),
-        H3[7] = (x_ext[6] - y_L) / sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2),
+                        (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5
+        H3[1] = (x_ext[0] - x_L) / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2)
+        H3[4] = (x_ext[3] - h_L) / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2)
+        H3[7] = (x_ext[6] - y_L) / np.sqrt((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2)
 
         H.append(list(H3))
-        H.append([0, 0, 0, 0, 0, 0, 0, 0, 0])
+
         H5 = np.zeros(9)
 
         H5[0] = (x_ext[3] - h_L) * (x_ext[0] - x_L) / (
-                sqrt(1 - (x_ext[3] - h_L) ** 2 / (
+                np.sqrt(1 - (x_ext[3] - h_L) ** 2 / (
                         (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2)) * (
-                        (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5),
+                        (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5)
         H5[3] = (((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** -0.5 - (
                 x_ext[3] - h_L) ** 2 / (
-                         (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5) / sqrt(
-            1 - (x_ext[3] - h_L) ** 2 / ((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2)),
+                         (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5) / np.sqrt(
+            1 - (x_ext[3] - h_L) ** 2 / ((x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2))
         H5[6] = (x_ext[3] - h_L) * (x_ext[6] - y_L) / (
-                sqrt(1 - (x_ext[3] - h_L) ** 2 / (
+                np.sqrt(1 - (x_ext[3] - h_L) ** 2 / (
                         (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2)) * (
                         (x_ext[0] - x_L) ** 2 + (x_ext[6] - y_L) ** 2 + (x_ext[3] - h_L) ** 2) ** 1.5)
 
@@ -2966,7 +2997,7 @@ def coeff_mach(N):
 
 # trajectory end
 def func_trajectory_new_end(x_est_stor, t_meas_est,
-                        r, rho_0, m, g, K_inch, K_gran, K_fut, d, l, eta, v0, V_sound):
+                            r, rho_0, m, g, K_inch, K_gran, K_fut, d, l, eta, v0, V_sound, x_L, y_L, h_L):
     i_f = 0.5
     T_step = 0.05
 
@@ -2975,6 +3006,10 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
 
     x_est_fin_stor.append(x_est_stor[-1])
     t_meas_fin_stor.append(t_meas_est[-1])
+    
+    R_est_fin_stor = []
+    Vr_est_fin_stor = []
+    theta_est_fin_stor = []
 
     i_f = 0.5
     T_step = 0.05
@@ -2987,10 +3022,19 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
     Sg_corr = Sg * ((v0 * K_fut) / 2800) ** (1 / 3)
 
     Mach, Cx, p_coefs = coeff_mach(1000)
-
+    
+    R_est_fin_stor.append(np.sqrt(
+        (x_est_fin_stor[0][0] - x_L) ** 2 + x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2)
+    
+    Vr_est_fin_stor.append((x_est_fin_stor[0][1] * (x_est_fin_stor[0][0] - x_L) + x_est_fin_stor[0][4] * (
+                x_est_fin_stor[0][3] - h_L) + x_est_fin_stor[0][7] * (x_est_fin_stor[0][6] - y_L)) / np.sqrt(
+        (x_est_fin_stor[0][0] - x_L) ** 2 + (x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2))
+    
+    theta_est_fin_stor.append(np.arcsin((x_est_fin_stor[0][3] - h_L) / np.sqrt(
+        (x_est_fin_stor[0][0] - x_L) ** 2 + (x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2)))
+    
     k = 0
     while x_est_fin_stor[k][3] > 0:
-
         k = k + 1
 
         x_est_fin = np.zeros(9)
@@ -3011,12 +3055,34 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
         Cx_int_temp = Cx_int(V_cur / V_sound)
         As = (rho_0 * (np.pi * r ** 2 / 2) * (V_cur ** 2 / 2) * Cx_int_temp * i_f) / m
 
-        x_est_fin[2] = -As * np.cos(np.arctan(x_est_fin[4] / x_est_fin[1]))
-        x_est_fin[5] = -As * np.sin(np.arctan(x_est_fin[4] / x_est_fin[1])) - g
+        V_cur_prev = np.sqrt(x_est_fin_stor[k - 1][1] ** 2 + x_est_fin_stor[k - 1][4] ** 2)
+        Cx_int_prev = interpolate.interp1d(Mach, Cx)
+        Cx_int_temp_prev = Cx_int_prev(V_cur_prev / V_sound)
+        As_prev = (rho_0 * (np.pi * r ** 2 / 2) * (V_cur_prev ** 2 / 2) * Cx_int_temp_prev * i_f) / m
+
+        Ax = -As * np.cos(np.arctan(x_est_fin[4] / x_est_fin[1]))
+        Ah = -As * np.sin(np.arctan(x_est_fin[4] / x_est_fin[1])) - g
+
+        Ax_prev = - As_prev * np.cos(np.arctan(x_est_fin_stor[k - 1][4] / x_est_fin_stor[k - 1][1]))
+        Ah_prev = - As_prev * np.sin(np.arctan(x_est_fin_stor[k - 1][4] / x_est_fin_stor[k - 1][1])) - g
+
+        x_est_fin[2] = x_est_fin_stor[k - 1][2] + (Ax - Ax_prev)
+        x_est_fin[5] = x_est_fin_stor[k - 1][5] + (Ah - Ah_prev)
+
+        R_est_fin_stor.append(np.sqrt(
+            (x_est_fin[0] - x_L) ** 2 + x_est_fin[6] - y_L) ** 2 + (x_est_fin[3] - h_L) ** 2)
+
+        Vr_est_fin_stor.append((x_est_fin[1] * (x_est_fin[0] - x_L) + x_est_fin[4] * (
+                x_est_fin[3] - h_L) + x_est_fin[7] * (x_est_fin[6] - y_L)) / np.sqrt(
+            (x_est_fin[0] - x_L) ** 2 + (x_est_fin[6] - y_L) ** 2 + (x_est_fin[3] - h_L) ** 2))
+
+        theta_est_fin_stor.append(np.arcsin((x_est_fin[3] - h_L) / np.sqrt(
+            (x_est_fin[0] - x_L) ** 2 + (x_est_fin[6] - y_L) ** 2 + (x_est_fin[3] - h_L) ** 2)))
 
         x_est_fin_stor.append(list(x_est_fin))
 
-    return x_est_fin_stor
+    return x_est_fin_stor, t_meas_fin_stor, R_est_fin_stor, Vr_est_fin_stor, theta_est_fin_stor
+
 
 # linear piece estimation error
 def func_linear_piece_estimation_error(xhy_0_set, x_est_top, x_true_start, h_true_start, x_true_fin, h_true_fin,
