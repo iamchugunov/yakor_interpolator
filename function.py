@@ -156,7 +156,7 @@ def func_angle_smoother(theta_meas, t_meas, delta, sigma_ksi, sigma_n):
     d_ksi = sigma_ksi ** 2
     I = np.eye(2)
 
-    H = np.array([1, 0])
+    H = np.array([[1, 0]])
     # sigma_n = 5e-4
     Dn = sigma_n ** 2
 
@@ -189,7 +189,7 @@ def func_angle_smoother(theta_meas, t_meas, delta, sigma_ksi, sigma_n):
     dx_est_sm_prev = dx_est_stor[-1]
 
     theta_filt = np.zeros(len(x_est_stor))
-    theta_filt[0] = x_est_sm_prev[0]
+    theta_filt[0] = x_est_sm_prev[0][0]
 
     for i in range(len(x_est_stor) - 1):
         F = np.array([[1, dT_stor[len(x_est_stor) - i - 1]], [0, 1]])
@@ -202,7 +202,7 @@ def func_angle_smoother(theta_meas, t_meas, delta, sigma_ksi, sigma_n):
         x_est_sm_prev = x_est_sm
         dx_est_sm_prev = dx_est_sm
 
-        theta_filt[i + 1] = x_est_sm[0]
+        theta_filt[i + 1] = x_est_sm[0][0]
 
     return theta_filt[::-1]
 
@@ -2847,9 +2847,11 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
     for k in range(1, len(t_meas)):
         Vx_upr[k] = Vx_upr[k - 1] + Ax_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
         Vh_upr[k] = Vh_upr[k - 1] + Ah_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
+
         V_cur = np.sqrt(Vx_upr[k] ** 2 + Vh_upr[k] ** 2)
         Cx_int = interpolate.interp1d(Mach, Cx)
         Cx_int_temp = Cx_int(V_cur / V_sound)
+
         As = (rho_0 * (np.pi * r ** 2 / 2) * (V_cur ** 2 / 2) * Cx_int_temp * i_f) / m
         Ax_upr[k] = - As * np.cos(np.arctan(Vh_upr[k] / Vx_upr[k]))
         Ah_upr[k] = - As * np.sin(np.arctan(Vh_upr[k] / Vx_upr[k])) - g
@@ -3024,7 +3026,7 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
     Mach, Cx, p_coefs = coeff_mach(1000)
     
     R_est_fin_stor.append(np.sqrt(
-        (x_est_fin_stor[0][0] - x_L) ** 2 + x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2)
+        (x_est_fin_stor[0][0] - x_L) ** 2 + (x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2))
     
     Vr_est_fin_stor.append((x_est_fin_stor[0][1] * (x_est_fin_stor[0][0] - x_L) + x_est_fin_stor[0][4] * (
                 x_est_fin_stor[0][3] - h_L) + x_est_fin_stor[0][7] * (x_est_fin_stor[0][6] - y_L)) / np.sqrt(
@@ -3070,7 +3072,7 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
         x_est_fin[5] = x_est_fin_stor[k - 1][5] + (Ah - Ah_prev)
 
         R_est_fin_stor.append(np.sqrt(
-            (x_est_fin[0] - x_L) ** 2 + x_est_fin[6] - y_L) ** 2 + (x_est_fin[3] - h_L) ** 2)
+            (x_est_fin[0] - x_L) ** 2 + (x_est_fin[6] - y_L) ** 2 + (x_est_fin[3] - h_L) ** 2))
 
         Vr_est_fin_stor.append((x_est_fin[1] * (x_est_fin[0] - x_L) + x_est_fin[4] * (
                 x_est_fin[3] - h_L) + x_est_fin[7] * (x_est_fin[6] - y_L)) / np.sqrt(
@@ -3365,6 +3367,63 @@ def func_std_error_meas(track_meas, R_est_err_plot, Vr_est_err_plot,
 
     return track_meas, SKO_R_true, SKO_V_true, SKO_theta_true
 
+def func_std_error_meas_new(track_meas, y_ext_stor, R_meas, Vr_meas, theta_meas,
+                        sko_R_tz, sko_Vr_tz, sko_theta_tz):
+
+    R_true = []
+    Vr_true = []
+    theta_true = []
+
+    validR = []
+    validVr = []
+    validTheta = []
+
+    for k in range(len(R_meas)):
+
+            R_meas_err = abs(R_meas[k] - y_ext_stor[k + 1][0])
+            Vr_meas_err = abs(Vr_meas[k] - y_ext_stor[k + 1][1])
+            theta_meas_err = abs(theta_meas[k] - y_ext_stor[k + 1][2])
+
+            if (-3 * sko_R_tz < R_meas_err) and (R_meas_err < 3 * sko_R_tz):
+                valid_R = 0
+            else:
+                valid_R = 1
+
+            if (-3 * sko_Vr_tz < Vr_meas_err) and (Vr_meas_err < 3 * sko_Vr_tz):
+                valid_Vr = 0
+            else:
+                valid_Vr = 1
+
+            if (-3 * sko_theta_tz < theta_meas_err) and (theta_meas_err < 3 * sko_theta_tz):
+                valid_theta = 0
+            else:
+                valid_theta = 1
+
+            # STD across all measurements
+            R_true.append(R_meas_err)
+            Vr_true.append(Vr_meas_err)
+            theta_true.append(theta_meas_err)
+
+            validR.append(valid_R)
+            validVr.append(valid_Vr)
+            validTheta.append(valid_theta)
+
+    # STD across all measurements
+    SKO_R_true = np.std(np.array(R_true))
+    SKO_V_true = np.std(np.array(Vr_true))
+    SKO_theta_true = np.std(np.array(theta_true))
+
+    # return the measurement vector, flag valid
+    for i in range(len(validR)):
+        track_meas["points"][i]["saEpsilon"] = SKO_theta_true
+        track_meas["points"][i]["validEpsilon"] = validTheta[i]
+        track_meas["points"][i]["saR"] = SKO_R_true
+        track_meas["points"][i]["validR"] = validR[i]
+        track_meas["points"][i]["saVr"] = SKO_V_true
+        track_meas["points"][i]["validVr"] = validVr[i]
+
+    return track_meas, SKO_R_true, SKO_V_true, SKO_theta_true
+
 
 # determination coeff for the gap of an active-ractive bullet
 def func_lsm_linear(X, H):
@@ -3535,9 +3594,7 @@ def func_derivation_bullet(m, d, l, eta, K_inch, K_gran, K_fut, v0, t_pol):
 
 
 # wind accounting
-def func_wind(t_fin, x_fin, x_est_start, wind_module, wind_direction, az):
-    v0 = x_est_start[1]
-    alpha = x_est_start[3]
+def func_wind(t_fin, x_fin, v0, alpha, wind_module, wind_direction, az):
     Aw = np.deg2rad(az) - (np.deg2rad(wind_direction) + np.pi)
     Wz = wind_module * np.sin(Aw)
     z_wind = Wz * (t_fin - x_fin / (v0 / np.cos(alpha)))
