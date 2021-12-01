@@ -2847,9 +2847,11 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
     for k in range(1, len(t_meas)):
         Vx_upr[k] = Vx_upr[k - 1] + Ax_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
         Vh_upr[k] = Vh_upr[k - 1] + Ah_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
+
         V_cur = np.sqrt(Vx_upr[k] ** 2 + Vh_upr[k] ** 2)
         Cx_int = interpolate.interp1d(Mach, Cx)
         Cx_int_temp = Cx_int(V_cur / V_sound)
+
         As = (rho_0 * (np.pi * r ** 2 / 2) * (V_cur ** 2 / 2) * Cx_int_temp * i_f) / m
         Ax_upr[k] = - As * np.cos(np.arctan(Vh_upr[k] / Vx_upr[k]))
         Ah_upr[k] = - As * np.sin(np.arctan(Vh_upr[k] / Vx_upr[k])) - g

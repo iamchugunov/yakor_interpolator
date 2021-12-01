@@ -219,17 +219,23 @@ def process_measurements(data, config):
 
                 R0 = np.sqrt(config.loc_X ** 2 + config.loc_Y ** 2 + config.loc_Z ** 2)
 
-                R_meas_filter = list([R0]) + list(R_meas_filter)
+
+                R_meas_filter = [R0] + list(R_meas_filter)
+
 
                 V0 = (V0_abs_lsm * np.cos(config.alpha) * (-config.loc_X) + V0_abs_lsm * np.sin(config.alpha) * (
                     -config.loc_Z)) / np.sqrt(config.loc_X ** 2 + config.loc_Y ** 2 + config.loc_Z ** 2)
 
-                Vr_meas_filter = list([V0[0]]) + list(Vr_meas_filter)
+
+                Vr_meas_filter = [V0[0]] + list(Vr_meas_filter)
+
 
                 theta0 = np.arcsin(-config.loc_Z / np.sqrt(
                     config.loc_X ** 2 + config.loc_Y ** 2 + config.loc_Z ** 2))
 
-                theta_meas_filter = list([theta0]) + list(theta_meas_filter)
+
+                theta_meas_filter =[theta0] + list(theta_meas_filter)
+
 
                 sigma_ksi_x = 0.05
                 sigma_ksi_h = 0.05
@@ -242,7 +248,9 @@ def process_measurements(data, config):
                 sigma_n_Ax = 0.5
                 sigma_n_Ah = 0.5
 
-                gamma = np.arctan(np.tan(config.alpha) - g / V0_abs_lsm)
+
+                gamma = np.arctan(np.tan(config.alpha) - g / A_abs_lsm)
+
 
                 x_est_init = [0, (V0_abs_lsm * np.cos(config.alpha))[0], (A_abs_lsm * np.cos(gamma))[0], 0,
                               (V0_abs_lsm * np.sin(config.alpha))[0], (A_abs_lsm * np.sin(gamma))[0], 0, 0, 0]
@@ -253,19 +261,7 @@ def process_measurements(data, config):
                     sigma_ksi_x, sigma_ksi_h, sigma_ksi_y, sigma_n_R, sigma_n_Vr, sigma_n_theta, sigma_n_y, sigma_n_Ax,
                     sigma_n_Ah)
 
-                x_meas_start = np.array(x_est_stor)[:, 0]
-                Vx_meas_start = np.array(x_est_stor)[:, 1]
-                Ax_meas_start = np.array(x_est_stor)[:, 2]
-                h_meas_start = np.array(x_est_stor)[:, 3]
-                Vh_meas_start = np.array(x_est_stor)[:, 4]
-                Ah_meas_start = np.array(x_est_stor)[:, 5]
-                y_meas_start = np.array(x_est_stor)[:, 6]
-                Vy_meas_start = np.array(x_est_stor)[:, 7]
-                Ay_meas_start = np.array(x_est_stor)[:, 8]
 
-                R_meas_start = np.array(y_ext_stor)[:, 0]
-                Vr_meas_start = np.array(y_ext_stor)[:, 1]
-                theta_meas_start = np.array(y_ext_stor)[:, 2]
 
                 x_est_fin_stor, t_meas_fin, R_meas_fin, Vr_meas_fin, theta_meas_fin = func_trajectory_new_end(
                     x_est_stor,
@@ -273,34 +269,26 @@ def process_measurements(data, config):
                     r, rho_0, config.m, g, K_inch, K_gran, K_fut, config.d,
                     config.l, config.eta, V0_abs_lsm, V_sound, config.loc_X, config.loc_Y, config.loc_Z)
 
-                x_meas_fin = np.array(x_est_fin_stor)[:, 0]
-                Vx_meas_fin = np.array(x_est_fin_stor)[:, 1]
-                Ax_meas_fin = np.array(x_est_fin_stor)[:, 2]
-                h_meas_fin = np.array(x_est_fin_stor)[:, 3]
-                Vh_meas_fin = np.array(x_est_fin_stor)[:, 4]
-                Ah_meas_fin = np.array(x_est_fin_stor)[:, 5]
-                y_meas_fin = np.array(x_est_fin_stor)[:, 6]
-                Vy_meas_fin = np.array(x_est_fin_stor)[:, 7]
-                Ay_meas_fin = np.array(x_est_fin_stor)[:, 8]
 
                 track = {}
                 meas = []
+                # [ x - 0, Vx - 1, Ax - 2, h - 3, Vh - 4, Ah - 5, y - 6, Vy - 7, Ay - 8]
 
                 for i in range(len(t_meas) - 1):
-                    meas.append({"t": t_meas[i], "x": x_meas_start[i], "y": y_meas_start[i],
-                                 "z": h_meas_start[i], "Vx": Vx_meas_start[i],
-                                 "Vy": Vy_meas_start[i], "Vz": Vh_meas_start[i],
-                                 "Ax": Ax_meas_start[i],
-                                 "Ay": Ay_meas_start[i], "Az": Ah_meas_start[i],
-                                 "DistanceR": R_meas_start[i],
-                                 "VrR": Vr_meas_start[i], "EvR": np.rad2deg(theta_meas_start[i])})
+                    meas.append({"t": t_meas[i], "x": x_est_stor[i][0], "y": x_est_stor[i][3],
+                                 "z": x_est_stor[i][6], "Vx": x_est_stor[i][1],
+                                 "Vy": x_est_stor[i][4], "Vz": x_est_stor[i][7],
+                                 "Ax": x_est_stor[i][2],
+                                 "Ay": x_est_stor[i][5], "Az": x_est_stor[i][8],
+                                 "DistanceR": y_ext_stor[i][0],
+                                 "VrR": y_ext_stor[i][1], "EvR": np.rad2deg(y_ext_stor[i][2])})
 
-                for i in range(len(t_meas_fin) - 1):
-                    meas.append({"t": t_meas_fin[i], "x": x_meas_fin[i], "y": y_meas_fin[i],
-                                 "z": h_meas_fin[i], "Vx": Vx_meas_fin[i],
-                                 "Vy": Vy_meas_fin[i], "Vz": Vh_meas_fin[i],
-                                 "Ax": Ax_meas_fin[i],
-                                 "Ay": Ay_meas_fin[i], "Az": Ah_meas_fin[i],
+                for i in range(len(t_meas_fin)):
+                    meas.append({"t": t_meas_fin[i], "x": x_est_fin_stor[i][0], "y": x_est_fin_stor[i][3],
+                                 "z": x_est_fin_stor[i][6], "Vx": x_est_fin_stor[i][1],
+                                 "Vy": x_est_fin_stor[i][4], "Vz": x_est_fin_stor[i][7],
+                                 "Ax": x_est_fin_stor[i][2],
+                                 "Ay": x_est_fin_stor[i][5], "Az": x_est_fin_stor[i][8],
                                  "DistanceR": R_meas_fin[i],
                                  "VrR": Vr_meas_fin[i], "EvR": np.rad2deg(theta_meas_fin[i])})
 
@@ -437,6 +425,7 @@ def process_measurements(data, config):
                 #                  "alpha": np.rad2deg(alpha_true_start[i]),
                 #                  "DistanceR": R_true_start[i], "AzR": 0,
                 #                  "VrR": Vr_true_start[i], "EvR": np.rad2deg(theta_true_start[i])})
+
                 #
                 # for i in range(len(t_meas_plot)):
                 #     for j in range(len(t_meas_plot[i]) - 1):
@@ -449,6 +438,20 @@ def process_measurements(data, config):
                 #                      "DistanceR": R_est_full_plot[i][j], "AzR": 0,
                 #                      "VrR": Vr_est_full_plot[i][j], "EvR": np.rad2deg(theta_est_full_plot[i][j])})
                 #
+
+                #
+                # for i in range(len(t_meas_plot)):
+                #     for j in range(len(t_meas_plot[i]) - 1):
+                #         meas.append({"t": t_meas_plot[i][j], "x": x_tr_er_plot[i][j], "y": h_tr_er_plot[i][j],
+                #                      "z": 0, "V": V_abs_est_plot[i][j], "Vx": Vx_true_er_plot[i][j],
+                #                      "Vy": Vh_true_er_plot[i][j], "Vz": 0, "A": A_abs_est_plot[i][j],
+                #                      "Ax": Ax_true_er_plot[i][j],
+                #                      "Ay": Ah_true_er_plot[i][j], "Az": 0, "C": x_est_fin[i][0],
+                #                      "alpha": np.rad2deg(alpha_tr_er_plot[i][j]),
+                #                      "DistanceR": R_est_full_plot[i][j], "AzR": 0,
+                #                      "VrR": Vr_est_full_plot[i][j], "EvR": np.rad2deg(theta_est_full_plot[i][j])})
+                #
+
                 # for i in range(len(t_fin)):
                 #     meas.append({"t": t_fin[i], "x": x_true_fin[i], "y": h_true_fin[i],
                 #                  "z": 0, "V": V_abs_true_fin[i], "Vx": Vx_true_fin[i],
@@ -482,11 +485,18 @@ def process_measurements(data, config):
                 # print('')
                 # print(x_true_fin[-1], 'х - точки падения')
                 # print(h_true_fin[-1], 'h - точки падения')
+
+                #
+                # print(z, 'z - точки падения')
+                # print(x_fall_gk[0], 'х_fall_gk - точки падения')
+                # print(z_fall_gk[0], 'z_fall_gk - точки падения')
+
                 #
                 # print(z, 'z - точки падения')
                 # print(x_fall_gk[0], 'х_fall_gk - точки падения')
                 # print(z_fall_gk[0], 'z_fall_gk - точки падения')
                 #
+
                 # print(sko_R_meas, sko_Vr_meas, np.rad2deg(sko_theta_meas), 'значение СКО после отсева измерений')
                 # print(sR, sVr, np.rad2deg(stheta), "значение СКО измеренное - из файла")
                 # print(sko_R_tz, sko_Vr_tz, np.rad2deg(sko_theta_tz), 'СКО по ТЗ')
