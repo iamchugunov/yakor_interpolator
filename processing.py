@@ -191,12 +191,11 @@ def process_measurements(data, config):
                 N = 300
                 Nend = 15000
 
-                # bullet_type = 1
                 Cx = 0.38  # 0.38
                 r = 0.00545 
 
                 if config.bullet_type == 2:
-                    Cx = 0.42  # 0.32 #0.44
+                    Cx = 0.42  
                     # r = 0.00762 / 2
                     r = 0.00762
 
