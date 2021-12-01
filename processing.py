@@ -13,7 +13,7 @@ from function import length_winlen, func_linear_piece_app, func_linear_piece_est
     func_linear_piece_estimation_start, func_linear_piece_app_start, func_quad_piece_app_start, \
     func_active_reactive_trajectory, func_emissions_theta, func_angle_smoother, \
     func_coord_smoother, func_quad_piece_estimation_two, func_trajectory_end_two, traj_bullet_meas, coeff_mach, \
-    func_trajectory_new_end, delta_R_calculation, func_lsm_processing
+    func_trajectory_new_end, delta_R_calculation, func_lsm_processing, func_std_error_meas_new
 
 
 def process_initial_data(mes, config):
@@ -197,13 +197,15 @@ def process_measurements(data, config):
 
                 if config.bullet_type == 2:
                     Cx = 0.42  # 0.32 #0.44
-                    r = 0.00762 / 2
+                    # r = 0.00762 / 2
+                    r = 0.00762
 
                 parameters_bounds = [config.k_bounds, config.v0_bounds, config.dR_bounds, config.angle_bounds]
 
                 # measurements filtering
                 R_meas_filter, Vr_meas_filter = func_coord_smoother(R_meas, Vr_meas, t_meas, config.sigma_RVr,
                                                                     sigma_ksi_RVr, sigma_n1_RVr, sigma_n2_RVr)
+
                 theta_meas_filter = func_angle_smoother(theta_meas, t_meas, config.sigma_theta, sigma_ksi_theta,
                                                         sigma_n_theta)
 
@@ -219,23 +221,17 @@ def process_measurements(data, config):
 
                 R0 = np.sqrt(config.loc_X ** 2 + config.loc_Y ** 2 + config.loc_Z ** 2)
 
-
                 R_meas_filter = [R0] + list(R_meas_filter)
 
-
-                V0 = (V0_abs_lsm * np.cos(config.alpha) * (-config.loc_X) + V0_abs_lsm * np.sin(config.alpha) * (
+                Vr0 = (V0_abs_lsm * np.cos(config.alpha) * (-config.loc_X) + V0_abs_lsm * np.sin(config.alpha) * (
                     -config.loc_Z)) / np.sqrt(config.loc_X ** 2 + config.loc_Y ** 2 + config.loc_Z ** 2)
 
-
-                Vr_meas_filter = [V0[0]] + list(Vr_meas_filter)
-
+                Vr_meas_filter = [Vr0[0]] + list(Vr_meas_filter)
 
                 theta0 = np.arcsin(-config.loc_Z / np.sqrt(
                     config.loc_X ** 2 + config.loc_Y ** 2 + config.loc_Z ** 2))
 
-
-                theta_meas_filter =[theta0] + list(theta_meas_filter)
-
+                theta_meas_filter = [theta0] + list(theta_meas_filter)
 
                 sigma_ksi_x = 0.05
                 sigma_ksi_h = 0.05
@@ -243,17 +239,13 @@ def process_measurements(data, config):
 
                 sigma_n_R = 10
                 sigma_n_Vr = 0.5
-                sigma_n_theta = np.deg2rad(0.5)
+                sigma_n_theta = np.deg2rad(0.1)
                 sigma_n_y = 0.1
                 sigma_n_Ax = 0.5
                 sigma_n_Ah = 0.5
 
-
-                gamma = np.arctan(np.tan(config.alpha) - g / A_abs_lsm)
-
-
-                x_est_init = [0, (V0_abs_lsm * np.cos(config.alpha))[0], (A_abs_lsm * np.cos(gamma))[0], 0,
-                              (V0_abs_lsm * np.sin(config.alpha))[0], (A_abs_lsm * np.sin(gamma))[0], 0, 0, 0]
+                x_est_init = [0, (V0_abs_lsm * np.cos(config.alpha))[0], (A_abs_lsm * np.cos(gamma_lsm))[0], 0,
+                              (V0_abs_lsm * np.sin(config.alpha))[0], (A_abs_lsm * np.sin(gamma_lsm))[0], 0, 0, 0]
 
                 x_est_stor, y_ext_stor = traj_bullet_meas(
                     [R_meas_filter, Vr_meas_filter, theta_meas_filter, np.ones(len(R_meas_filter)) * 0.01], x_est_init,
@@ -261,17 +253,36 @@ def process_measurements(data, config):
                     sigma_ksi_x, sigma_ksi_h, sigma_ksi_y, sigma_n_R, sigma_n_Vr, sigma_n_theta, sigma_n_y, sigma_n_Ax,
                     sigma_n_Ah)
 
-
-
                 x_est_fin_stor, t_meas_fin, R_meas_fin, Vr_meas_fin, theta_meas_fin = func_trajectory_new_end(
                     x_est_stor,
                     t_meas,
                     r, rho_0, config.m, g, K_inch, K_gran, K_fut, config.d,
                     config.l, config.eta, V0_abs_lsm, V_sound, config.loc_X, config.loc_Y, config.loc_Z)
 
+                track_meas, sko_R_meas, sko_Vr_meas, sko_theta_meas = func_std_error_meas_new(track_meas,
+                                                                                              y_ext_stor, R_meas,
+                                                                                              Vr_meas, theta_meas,
+                                                                                              sko_R_tz,
+                                                                                              sko_Vr_tz,
+                                                                                              sko_theta_tz)
+
+                z_derivation = func_derivation_bullet(config.m, config.d, config.l, config.eta, K_inch, K_gran, K_fut,
+                                                      V0_abs_lsm,
+                                                      t_meas_fin[-1])
+
+                z_wind = func_wind(t_meas_fin[-1], x_est_fin_stor[-1][0], V0_abs_lsm, config.alpha, config.wind_module,
+                                   config.wind_direction, config.az)
+
+                z = z_wind + z_derivation
+
+                x_fall_gk, z_fall_gk = func_point_fall(z, x_est_fin_stor[-1][0], config.can_B, config.can_L, config.az)
+
+                Vb = x_est_fin_stor[-1][0] * np.sin(3 * sko_theta_tz)
+                Vd = x_est_fin_stor[-1][0] * np.sin(3 * sko_theta_tz)
 
                 track = {}
                 meas = []
+
                 # [ x - 0, Vx - 1, Ax - 2, h - 3, Vh - 4, Ah - 5, y - 6, Vy - 7, Ay - 8]
 
                 for i in range(len(t_meas) - 1):
@@ -295,24 +306,22 @@ def process_measurements(data, config):
                 meas_sampling = meas
 
                 track["points"] = meas_sampling
-                # track["endpoint_x"] = x_true_fin[-1]
-                # track["endpoint_y"] = h_true_fin[-1]
-                # track["endpoint_z"] = z
-                # track["endpoint_GK_x"] = x_fall_gk[0]
-                # track["endpoint_GK_z"] = z_fall_gk[0]
-                # track["Vb"] = Vb
-                # track["Vd"] = Vd
-                # track["SKO_R"] = sko_R_meas
-                # track["SKO_V"] = sko_Vr_meas
-                # track["SKO_theta"] = sko_theta_meas
+                track["endpoint_x"] = x_est_fin_stor[-1][0]
+                track["endpoint_y"] = x_est_fin_stor[-1][3]
+                track["endpoint_z"] = x_est_fin_stor[-1][6]
+                track["endpoint_GK_x"] = x_fall_gk[0]
+                track["endpoint_GK_z"] = z_fall_gk[0]
+                track["Vb"] = Vb
+                track["Vd"] = Vd
+                track["SKO_R"] = sko_R_meas
+                track["SKO_V"] = sko_Vr_meas
+                track["SKO_theta"] = sko_theta_meas
                 track["valid"] = True
 
                 # for i in range(len(az_meas) - 1):
                 #     for j in range(len(track["points"])):
                 #         if t_meas[i] <= track["points"][j]["t"] < t_meas[i + 1]:
                 #             track["points"][j]["AzR"] = az_meas[i]
-
-
 
                 config.data_points = 1
                 config.flag_return = 1
