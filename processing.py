@@ -274,6 +274,7 @@ def process_measurements(data, config):
                                    config.wind_direction, config.az)
 
                 z = z_wind + z_derivation
+                z = z[0]
 
                 x_fall_gk, z_fall_gk = func_point_fall(z, x_est_fin_stor[-1][0], config.can_B, config.can_L, config.az)
 
@@ -584,7 +585,7 @@ def process_measurements(data, config):
                                                                                           sko_Vr_tz,
                                                                                           sko_theta_tz)
 
-                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start, config.wind_module,
+                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start[1], config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
 
                 z = z_wind
@@ -784,7 +785,7 @@ def process_measurements(data, config):
                                                                                           sko_Vr_tz,
                                                                                           sko_theta_tz)
 
-                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start, config.wind_module,
+                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start[1], config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
 
                 z = z_wind
@@ -965,7 +966,7 @@ def process_measurements(data, config):
 
                 z_derivation = func_derivation(K1, K2, x_true_fin[-1], x_est_app_start)
 
-                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start, config.wind_module,
+                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start[1], config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
 
                 z = z_wind + z_derivation
@@ -1236,7 +1237,7 @@ def process_measurements(data, config):
 
                 z_derivation = func_derivation(K1, K2, x_true_fin[-1], x_est_app_start)
 
-                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start, config.wind_module,
+                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start[1], config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
 
                 z = z_wind + z_derivation
@@ -1452,8 +1453,9 @@ def process_measurements(data, config):
 
                 z_derivation = func_derivation(K1, K2, x_true_fin[-1], x_est_app_start)
 
-                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start, config.wind_module,
+                z_wind = func_wind(t_fin[-1], x_true_fin[-1], x_est_app_start[1], config.alpha, config.wind_module,
                                    config.wind_direction, config.az)
+
 
                 z = z_wind + z_derivation
 
