@@ -2967,7 +2967,7 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
     for k in range(len(t_meas)):
         v0_abs_stor[k] = np.sqrt(x_est_stor[k][1] ** 2 + x_est_stor[k][4] ** 2 + x_est_stor[k][7] ** 2)
         alpha_stor[k] = np.arctan(x_est_stor[k][4] / x_est_stor[k][1])
-        a_abs_stor[k] = np.sqrt(x_est_stor[k][5] / x_est_stor[k][2])
+        a_abs_stor[k] = np.sqrt(x_est_stor[k][2] ** 2 + x_est_stor[k][5] ** 2 + x_est_stor[k][8] ** 2)
 
     return x_est_stor, y_ext_stor, v0_abs_stor, alpha_stor, a_abs_stor
 
@@ -3103,7 +3103,7 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
     for k in range(len(t_meas_fin_stor)):
         v0_abs_fin_stor[k] = np.sqrt(x_est_fin_stor[k][1] ** 2 + x_est_fin_stor[k][4] ** 2 + x_est_fin_stor[k][7] ** 2)
         alpha_fin_stor[k] = np.arctan(x_est_fin_stor[k][4] / x_est_fin_stor[k][1])
-        a_abs_fin_stor[k] = np.sqrt(x_est_fin_stor[k][5] / x_est_fin_stor[k][2])
+        a_abs_fin_stor[k] = np.sqrt(x_est_fin_stor[k][2] ** 2 + x_est_fin_stor[k][5] ** 2 + x_est_fin_stor[k][8] ** 2)
 
     return x_est_fin_stor, t_meas_fin_stor, R_est_fin_stor, Vr_est_fin_stor, theta_est_fin_stor, v0_abs_fin_stor, alpha_fin_stor, a_abs_fin_stor
 
