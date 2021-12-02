@@ -2958,7 +2958,18 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
 
         x_est_stor.append(x_est_prev)
 
-    return x_est_stor, y_ext_stor
+    alpha_stor = np.zeros(len(t_meas))
+    v0_abs_stor = np.zeros(len(t_meas))
+    a_abs_stor = np.zeros(len(t_meas))
+
+    # [ x - 0, Vx - 1, Ax - 2, h - 3, Vh - 4, Ah - 5, y - 6, Vy - 7, Ay - 8]
+
+    for k in range(len(t_meas)):
+        v0_abs_stor[k] = np.sqrt(x_est_stor[k][1] ** 2 + x_est_stor[k][4] ** 2 + x_est_stor[k][7] ** 2)
+        alpha_stor[k] = np.arctan(x_est_stor[k][4] / x_est_stor[k][1])
+        a_abs_stor[k] = np.sqrt(x_est_stor[k][5] / x_est_stor[k][2])
+
+    return x_est_stor, y_ext_stor, v0_abs_stor, alpha_stor, a_abs_stor
 
 
 def coeff_mach(N):
@@ -3008,7 +3019,7 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
 
     x_est_fin_stor.append(x_est_stor[-1])
     t_meas_fin_stor.append(t_meas_est[-1])
-    
+
     R_est_fin_stor = []
     Vr_est_fin_stor = []
     theta_est_fin_stor = []
@@ -3024,17 +3035,17 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
     Sg_corr = Sg * ((v0 * K_fut) / 2800) ** (1 / 3)
 
     Mach, Cx, p_coefs = coeff_mach(1000)
-    
+
     R_est_fin_stor.append(np.sqrt(
         (x_est_fin_stor[0][0] - x_L) ** 2 + (x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2))
-    
+
     Vr_est_fin_stor.append((x_est_fin_stor[0][1] * (x_est_fin_stor[0][0] - x_L) + x_est_fin_stor[0][4] * (
-                x_est_fin_stor[0][3] - h_L) + x_est_fin_stor[0][7] * (x_est_fin_stor[0][6] - y_L)) / np.sqrt(
+            x_est_fin_stor[0][3] - h_L) + x_est_fin_stor[0][7] * (x_est_fin_stor[0][6] - y_L)) / np.sqrt(
         (x_est_fin_stor[0][0] - x_L) ** 2 + (x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2))
-    
+
     theta_est_fin_stor.append(np.arcsin((x_est_fin_stor[0][3] - h_L) / np.sqrt(
         (x_est_fin_stor[0][0] - x_L) ** 2 + (x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2)))
-    
+
     k = 0
     while x_est_fin_stor[k][3] > 0:
         k = k + 1
@@ -3083,7 +3094,18 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
 
         x_est_fin_stor.append(list(x_est_fin))
 
-    return x_est_fin_stor, t_meas_fin_stor, R_est_fin_stor, Vr_est_fin_stor, theta_est_fin_stor
+    alpha_fin_stor = np.zeros(len(t_meas_fin_stor))
+    v0_abs_fin_stor = np.zeros(len(t_meas_fin_stor))
+    a_abs_fin_stor = np.zeros(len(t_meas_fin_stor))
+
+    # [ x - 0, Vx - 1, Ax - 2, h - 3, Vh - 4, Ah - 5, y - 6, Vy - 7, Ay - 8]
+
+    for k in range(len(t_meas_fin_stor)):
+        v0_abs_fin_stor[k] = np.sqrt(x_est_fin_stor[k][1] ** 2 + x_est_fin_stor[k][4] ** 2 + x_est_fin_stor[k][7] ** 2)
+        alpha_fin_stor[k] = np.arctan(x_est_fin_stor[k][4] / x_est_fin_stor[k][1])
+        a_abs_fin_stor[k] = np.sqrt(x_est_fin_stor[k][5] / x_est_fin_stor[k][2])
+
+    return x_est_fin_stor, t_meas_fin_stor, R_est_fin_stor, Vr_est_fin_stor, theta_est_fin_stor, v0_abs_fin_stor, alpha_fin_stor, a_abs_fin_stor
 
 
 # linear piece estimation error
@@ -3367,9 +3389,9 @@ def func_std_error_meas(track_meas, R_est_err_plot, Vr_est_err_plot,
 
     return track_meas, SKO_R_true, SKO_V_true, SKO_theta_true
 
-def func_std_error_meas_new(track_meas, y_ext_stor, R_meas, Vr_meas, theta_meas,
-                        sko_R_tz, sko_Vr_tz, sko_theta_tz):
 
+def func_std_error_meas_new(track_meas, y_ext_stor, R_meas, Vr_meas, theta_meas,
+                            sko_R_tz, sko_Vr_tz, sko_theta_tz):
     R_true = []
     Vr_true = []
     theta_true = []
@@ -3380,33 +3402,33 @@ def func_std_error_meas_new(track_meas, y_ext_stor, R_meas, Vr_meas, theta_meas,
 
     for k in range(len(R_meas)):
 
-            R_meas_err = abs(R_meas[k] - y_ext_stor[k + 1][0])
-            Vr_meas_err = abs(Vr_meas[k] - y_ext_stor[k + 1][1])
-            theta_meas_err = abs(theta_meas[k] - y_ext_stor[k + 1][2])
+        R_meas_err = abs(R_meas[k] - y_ext_stor[k + 1][0])
+        Vr_meas_err = abs(Vr_meas[k] - y_ext_stor[k + 1][1])
+        theta_meas_err = abs(theta_meas[k] - y_ext_stor[k + 1][2])
 
-            if (-3 * sko_R_tz < R_meas_err) and (R_meas_err < 3 * sko_R_tz):
-                valid_R = 0
-            else:
-                valid_R = 1
+        if (-3 * sko_R_tz < R_meas_err) and (R_meas_err < 3 * sko_R_tz):
+            valid_R = 0
+        else:
+            valid_R = 1
 
-            if (-3 * sko_Vr_tz < Vr_meas_err) and (Vr_meas_err < 3 * sko_Vr_tz):
-                valid_Vr = 0
-            else:
-                valid_Vr = 1
+        if (-3 * sko_Vr_tz < Vr_meas_err) and (Vr_meas_err < 3 * sko_Vr_tz):
+            valid_Vr = 0
+        else:
+            valid_Vr = 1
 
-            if (-3 * sko_theta_tz < theta_meas_err) and (theta_meas_err < 3 * sko_theta_tz):
-                valid_theta = 0
-            else:
-                valid_theta = 1
+        if (-3 * sko_theta_tz < theta_meas_err) and (theta_meas_err < 3 * sko_theta_tz):
+            valid_theta = 0
+        else:
+            valid_theta = 1
 
-            # STD across all measurements
-            R_true.append(R_meas_err)
-            Vr_true.append(Vr_meas_err)
-            theta_true.append(theta_meas_err)
+        # STD across all measurements
+        R_true.append(R_meas_err)
+        Vr_true.append(Vr_meas_err)
+        theta_true.append(theta_meas_err)
 
-            validR.append(valid_R)
-            validVr.append(valid_Vr)
-            validTheta.append(valid_theta)
+        validR.append(valid_R)
+        validVr.append(valid_Vr)
+        validTheta.append(valid_theta)
 
     # STD across all measurements
     SKO_R_true = np.std(np.array(R_true))
