@@ -284,26 +284,27 @@ def process_measurements(data, config):
                 meas = []
 
                 # [ x - 0, Vx - 1, Ax - 2, h - 3, Vh - 4, Ah - 5, y - 6, Vy - 7, Ay - 8]
+                # [ y - вбок]
 
                 for i in range(len(t_meas) - 1):
-                    meas.append({"t": t_meas[i], "x": x_est_stor[i][0], "y": x_est_stor[i][3],
-                                 "z": x_est_stor[i][6], "Vx": x_est_stor[i][1],
-                                 "Vy": x_est_stor[i][4], "Vz": x_est_stor[i][7],
+                    meas.append({"t": t_meas[i], "x": x_est_stor[i][0], "y": x_est_stor[i][6],
+                                 "z": x_est_stor[i][3], "Vx": x_est_stor[i][1],
+                                 "Vy": x_est_stor[i][7], "Vz": x_est_stor[i][4],
                                  "V": v0_abs_stor[i],
                                  "Ax": x_est_stor[i][2],
-                                 "Ay": x_est_stor[i][5], "Az": x_est_stor[i][8],
+                                 "Ay": x_est_stor[i][8], "Az": x_est_stor[i][5],
                                  "A": a_abs_stor[i], "C": c_stor[i],
                                  "alpha": np.rad2deg(alpha_stor[i]),
                                  "DistanceR": y_ext_stor[i][0],
                                  "VrR": y_ext_stor[i][1], "EvR": np.rad2deg(y_ext_stor[i][2])})
 
                 for i in range(len(t_meas_fin)):
-                    meas.append({"t": t_meas_fin[i], "x": x_est_fin_stor[i][0], "y": x_est_fin_stor[i][3],
-                                 "z": x_est_fin_stor[i][6], "Vx": x_est_fin_stor[i][1],
-                                 "Vy": x_est_fin_stor[i][4], "Vz": x_est_fin_stor[i][7],
+                    meas.append({"t": t_meas_fin[i], "x": x_est_fin_stor[i][0], "y": x_est_fin_stor[i][6],
+                                 "z": x_est_fin_stor[i][3], "Vx": x_est_fin_stor[i][1],
+                                 "Vy": x_est_fin_stor[i][7], "Vz": x_est_fin_stor[i][4],
                                  "V": v0_abs_fin_stor[i],
                                  "Ax": x_est_fin_stor[i][2],
-                                 "Ay": x_est_fin_stor[i][5], "Az": x_est_fin_stor[i][8],
+                                 "Ay": x_est_fin_stor[i][8], "Az": x_est_fin_stor[i][5],
                                  "A": a_abs_fin_stor[i], "C": c_fin_stor[i],
                                  "alpha": np.rad2deg(alpha_fin_stor[i]),
                                  "DistanceR": R_meas_fin[i],
