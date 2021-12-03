@@ -246,13 +246,13 @@ def process_measurements(data, config):
                 x_est_init = [0, (V0_abs_lsm * np.cos(config.alpha))[0], (A_abs_lsm * np.cos(gamma_lsm))[0], 0,
                               (V0_abs_lsm * np.sin(config.alpha))[0], (A_abs_lsm * np.sin(gamma_lsm))[0], 0, 0, 0]
 
-                x_est_stor, y_ext_stor, v0_abs_stor, alpha_stor,  a_abs_stor = traj_bullet_meas(
+                x_est_stor, y_ext_stor, v0_abs_stor, alpha_stor, a_abs_stor, c_stor = traj_bullet_meas(
                     [R_meas_filter, Vr_meas_filter, theta_meas_filter, np.ones(len(R_meas_filter)) * 0.01], x_est_init,
                     t_meas, config.loc_X, config.loc_Y, config.loc_Z, config.m, g, V_sound, rho_0, r,
                     sigma_ksi_x, sigma_ksi_h, sigma_ksi_y, sigma_n_R, sigma_n_Vr, sigma_n_theta, sigma_n_y, sigma_n_Ax,
                     sigma_n_Ah)
 
-                x_est_fin_stor, t_meas_fin, R_meas_fin, Vr_meas_fin, theta_meas_fin, v0_abs_fin_stor, alpha_fin_stor, a_abs_fin_stor = func_trajectory_new_end(
+                x_est_fin_stor, t_meas_fin, R_meas_fin, Vr_meas_fin, theta_meas_fin, v0_abs_fin_stor, alpha_fin_stor, a_abs_fin_stor, c_fin_stor = func_trajectory_new_end(
                     x_est_stor,
                     t_meas,
                     r, rho_0, config.m, g, K_inch, K_gran, K_fut, config.d,
@@ -292,7 +292,7 @@ def process_measurements(data, config):
                                  "V": v0_abs_stor[i],
                                  "Ax": x_est_stor[i][2],
                                  "Ay": x_est_stor[i][5], "Az": x_est_stor[i][8],
-                                 "A": a_abs_stor[i],
+                                 "A": a_abs_stor[i], "C": c_stor[i],
                                  "alpha": np.rad2deg(alpha_stor[i]),
                                  "DistanceR": y_ext_stor[i][0],
                                  "VrR": y_ext_stor[i][1], "EvR": np.rad2deg(y_ext_stor[i][2])})
@@ -304,7 +304,7 @@ def process_measurements(data, config):
                                  "V": v0_abs_fin_stor[i],
                                  "Ax": x_est_fin_stor[i][2],
                                  "Ay": x_est_fin_stor[i][5], "Az": x_est_fin_stor[i][8],
-                                 "A": a_abs_fin_stor[i],
+                                 "A": a_abs_fin_stor[i], "C": c_fin_stor[i],
                                  "alpha": np.rad2deg(alpha_fin_stor[i]),
                                  "DistanceR": R_meas_fin[i],
                                  "VrR": Vr_meas_fin[i], "EvR": np.rad2deg(theta_meas_fin[i])})

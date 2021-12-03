@@ -2844,6 +2844,8 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
     Vx_upr[0] = x_est_prev[1]
     Vh_upr[0] = x_est_prev[4]
 
+    Cx_int_temp_stor = np.zeros(len(t_meas))
+
     for k in range(1, len(t_meas)):
         Vx_upr[k] = Vx_upr[k - 1] + Ax_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
         Vh_upr[k] = Vh_upr[k - 1] + Ah_upr[k - 1] * (t_meas[k] - t_meas[k - 1])
@@ -2851,6 +2853,7 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
         V_cur = np.sqrt(Vx_upr[k] ** 2 + Vh_upr[k] ** 2)
         Cx_int = interpolate.interp1d(Mach, Cx)
         Cx_int_temp = Cx_int(V_cur / V_sound)
+        Cx_int_temp_stor[k] = Cx_int_temp
 
         As = (rho_0 * (np.pi * r ** 2 / 2) * (V_cur ** 2 / 2) * Cx_int_temp * i_f) / m
         Ax_upr[k] = - As * np.cos(np.arctan(Vh_upr[k] / Vx_upr[k]))
@@ -2964,12 +2967,14 @@ def traj_bullet_meas(y_meas_set, x_est_init, t_meas, x_L, y_L, h_L, m, g, V_soun
 
     # [ x - 0, Vx - 1, Ax - 2, h - 3, Vh - 4, Ah - 5, y - 6, Vy - 7, Ay - 8]
 
+    Cx_int_temp_stor[0] = Cx_int_temp_stor[1]
+
     for k in range(len(t_meas)):
         v0_abs_stor[k] = np.sqrt(x_est_stor[k][1] ** 2 + x_est_stor[k][4] ** 2 + x_est_stor[k][7] ** 2)
         alpha_stor[k] = np.arctan(x_est_stor[k][4] / x_est_stor[k][1])
         a_abs_stor[k] = np.sqrt(x_est_stor[k][2] ** 2 + x_est_stor[k][5] ** 2 + x_est_stor[k][8] ** 2)
 
-    return x_est_stor, y_ext_stor, v0_abs_stor, alpha_stor, a_abs_stor
+    return x_est_stor, y_ext_stor, v0_abs_stor, alpha_stor, a_abs_stor, Cx_int_temp_stor
 
 
 def coeff_mach(N):
@@ -3047,6 +3052,8 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
         (x_est_fin_stor[0][0] - x_L) ** 2 + (x_est_fin_stor[0][6] - y_L) ** 2 + (x_est_fin_stor[0][3] - h_L) ** 2)))
 
     k = 0
+    Cx_int_temp_stor_fin = np.zeros(10000)
+
     while x_est_fin_stor[k][3] > 0:
         k = k + 1
 
@@ -3066,6 +3073,9 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
         V_cur = np.sqrt(x_est_fin[1] ** 2 + x_est_fin[4] ** 2)
         Cx_int = interpolate.interp1d(Mach, Cx)
         Cx_int_temp = Cx_int(V_cur / V_sound)
+
+        Cx_int_temp_stor_fin[k] = Cx_int_temp
+
         As = (rho_0 * (np.pi * r ** 2 / 2) * (V_cur ** 2 / 2) * Cx_int_temp * i_f) / m
 
         V_cur_prev = np.sqrt(x_est_fin_stor[k - 1][1] ** 2 + x_est_fin_stor[k - 1][4] ** 2)
@@ -3105,7 +3115,10 @@ def func_trajectory_new_end(x_est_stor, t_meas_est,
         alpha_fin_stor[k] = np.arctan(x_est_fin_stor[k][4] / x_est_fin_stor[k][1])
         a_abs_fin_stor[k] = np.sqrt(x_est_fin_stor[k][2] ** 2 + x_est_fin_stor[k][5] ** 2 + x_est_fin_stor[k][8] ** 2)
 
-    return x_est_fin_stor, t_meas_fin_stor, R_est_fin_stor, Vr_est_fin_stor, theta_est_fin_stor, v0_abs_fin_stor, alpha_fin_stor, a_abs_fin_stor
+    Cx_int_temp_stor_fin[0] = Cx_int_temp_stor_fin[1]
+    Cx_int_temp_stor_fin = Cx_int_temp_stor_fin[0:len(t_meas_fin_stor)]
+
+    return x_est_fin_stor, t_meas_fin_stor, R_est_fin_stor, Vr_est_fin_stor, theta_est_fin_stor, v0_abs_fin_stor, alpha_fin_stor, a_abs_fin_stor, Cx_int_temp_stor_fin
 
 
 # linear piece estimation error
