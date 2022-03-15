@@ -40,7 +40,7 @@ class Config():
         self.can_Z = 0.
 
         # trowing angle
-        self.alpha = 0.
+        self.alpha_0 = 0.
         # azimuth
         self.az = 0.
         # heigth
@@ -53,46 +53,27 @@ class Config():
         self.atm_pressure = 0.
 
         # bullet type
-        # 1 - 5.45
-        # 2 - 7.62
-        # 3 - 82
-        # 4 - 122 reactive
-        # 5 - 122 art
-        # 6 - 152 act - reactive
-        # 7 - 152 art
+        # 1 - 5.45; 2 - 7.62; 3 - 82; 4 - 122 reactive; 5 - 122 art; 6 - 152 act - reactive; 7 - 152 art
         self.bullet_type = 0
 
         # bullet params
 
-        # model type: 1 - linear, 2 - quad
-        self.lin_kv = 0
-        # ini velo
+        #velocity
         self.v0 = 0.
+
         # mass
         self.m = 0.
-        # resistance koef
-        self.k0 = 0.
-        # dR
-        self.dR = 0.
+
         # std
         self.SKO_R = 0.
         self.SKO_Vr = 0.
         self.SKO_theta = 0.
+
         # derivation parameters
+        self.r = 0.
         self.l = 0.
         self.d = 0.
-        self.h = 0.
-        self.mu = 0.
-        self.i = 0.
         self.eta = 0.
-        # bounds
-        self.k_bounds = [0, 0]
-        self.v0_bounds = [0, 0]
-        self.dR_bounds = [0, 0]
-        self.angle_bounds = [0, 0]
-        # filter params
-        self.sigma_RVr = 0.
-        self.sigma_theta = 0.
 
         self.bullets = []
 
@@ -105,8 +86,6 @@ class Config():
 
         # track - result approx trajectory
         self.track = []
-        # track_meas - valid measurements
-        self.track_meas = []
 
 
 
