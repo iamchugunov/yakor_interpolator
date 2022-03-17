@@ -3,6 +3,174 @@ import pandas as pd
 from scipy import interpolate
 
 
+def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor_one_part, x_est_stor_two_part,
+                    i_f_estimation, cannon_h, m, r, x_l, y_l, h_l, m_e=2.2, s_e=0.038, k_p=1.6446, delta_pi_y=0,
+                    time_step=0.05):
+    '''
+    :param time_meas_full_one_part: ndarray
+    :param time_meas_full_two_part: ndarray
+    :param x_est_stor_one_part: ndarray
+    :param x_est_stor_two_part: ndarray
+    :param i_f_estimation: float
+    :param cannon_h: float
+    :param m: float
+    :param r: float
+    :param x_l: float
+    :param y_l: float
+    :param h_l: float
+    :param m_e: float
+    :param s_e: float
+    :param k_p: float
+    :param delta_pi_y: float
+    :param time_step: float
+    :return: x_est_stor_active: ndarray
+             y_ext_stor_active: ndarray
+             time_meas: ndarray
+    '''
+
+    data_43gost = pd.read_csv('43gost.csv')
+    ballistic_coefficient, machs = ballistic_coefficient_43gost()
+
+    time_meas_start = time_meas_full_one_part[-1]
+    time_meas_end = time_meas_full_two_part[0]
+    step_meas = round((time_meas_end - time_meas_start) / time_step) + 1
+    time_meas = np.linspace(time_meas_start, time_meas_end, num=step_meas)
+
+    time_meas_otn = (time_meas - time_meas_start) / (time_meas_end - time_meas_start)
+    mu_p_graph = [0, 0.25, 0.5625, 0.82, 0.98, 0.98, 0.82, 0.77, 0.73, 0.72, 0.71, 0.70, 0.6875, 0.625, 0.375, 0.1, 0]
+    time_graph = np.linspace(time_meas_start, time_meas_end, num=len(mu_p_graph))
+    time_graph_otn = (time_graph - time_meas_start) / (time_meas_end - time_meas_start)
+
+    mu_p_interp = interpolate.interp1d(time_graph_otn, mu_p_graph)(time_meas_otn)
+
+    length_mu_p = len(mu_p_interp)
+
+    length_i_l = 31
+    length_b_y = 291
+    i_l = np.linspace(1650, 1950, num=length_i_l)
+    b_y = np.linspace(0.01, 0.3, num=length_b_y)
+
+    mu_p = k_p * m_e * mu_p_interp / (time_meas_end - time_meas_start)
+
+    norm_nev = np.zeros((length_b_y, length_i_l))
+    norm_nev_x = np.zeros((length_b_y, length_i_l))
+    norm_nev_h = np.zeros((length_b_y, length_i_l))
+
+    velocity_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    alpha_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    velocity_x_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    velocity_h_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    x_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    h_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    m_ost = np.zeros((length_b_y, length_i_l, length_mu_p))
+    as_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    as_tan_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    as_x_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    as_h_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
+    p_sum = np.zeros((length_b_y, length_i_l, length_mu_p))
+
+    for i in range(length_b_y):
+        for j in range(length_i_l):
+            velocity_set_active[i, j, 0] = np.sqrt(x_est_stor_one_part[-1, 1] ** 2 + x_est_stor_one_part[-1, 4] ** 2)
+            alpha_set_active[i, j, 0] = np.arctan(x_est_stor_one_part[-1, 4] / x_est_stor_one_part[-1, 1])
+            velocity_x_set_active[i, j, 0] = x_est_stor_one_part[-1, 1]
+            velocity_h_set_active[i, j, 0] = x_est_stor_one_part[-1, 4]
+            x_set_active[i, j, 0] = x_est_stor_one_part[-1, 0]
+            h_set_active[i, j, 0] = x_est_stor_one_part[-1, 3]
+
+            velocity_sound_gost = interpolate.interp1d(data_43gost.height, data_43gost.a)(
+                h_set_active[i, j, 0] + cannon_h)
+            rho_gost = interpolate.interp1d(data_43gost.height, data_43gost.rho)(
+                h_set_active[i, j, 0] + cannon_h)
+            acc_gravity_gost = interpolate.interp1d(data_43gost.height, data_43gost.acc_gravity)(
+                h_set_active[i, j, 0] + cannon_h)
+            cx_int_tab = interpolate.interp1d(machs, ballistic_coefficient)(
+                velocity_set_active[i, j, 0] / velocity_sound_gost)
+
+            m_ost[i, j, 0] = m
+            as_set_active[i, j, 0] = (rho_gost * (np.pi * r ** 2 / 4) * (
+                    velocity_set_active[i, j, 0] ** 2 / 2) * cx_int_tab * i_f_estimation) / m_ost[i, j, 0]
+            as_tan_active[i, j, 0] = - as_set_active[i, j, 0] - acc_gravity_gost * np.sin(alpha_set_active[i, j, 0])
+
+            as_x_set_active[i, j, 0] = x_est_stor_one_part[-1, 2]
+            as_h_set_active[i, j, 0] = x_est_stor_one_part[-1, 5]
+
+            pi_y = interpolate.interp1d(data_43gost.height, data_43gost.pi)(h_set_active[i, j, 0])
+
+            p_sum[i, j, 0] = mu_p[0] * i_l[j] - s_e * data_43gost.p[0] * (pi_y + delta_pi_y)
+
+            for k in range(1, length_mu_p):
+                velocity_sound_gost = interpolate.interp1d(data_43gost.height, data_43gost.a)(
+                    h_set_active[i, j, k - 1] + cannon_h)
+                rho_gost = interpolate.interp1d(data_43gost.height, data_43gost.rho)(
+                    h_set_active[i, j, k - 1] + cannon_h)
+                acc_gravity_gost = interpolate.interp1d(data_43gost.height, data_43gost.acc_gravity)(
+                    h_set_active[i, j, k - 1] + cannon_h)
+                cx_int_tab = interpolate.interp1d(machs, ballistic_coefficient)(
+                    velocity_set_active[i, j, k - 1] / velocity_sound_gost)
+                pi_y = interpolate.interp1d(data_43gost.height, data_43gost.pi)(h_set_active[i, j, k - 1])
+
+                m_ost[i, j, k] = m_ost[i, j, k - 1] - mu_p[k] * time_step
+                p_sum[i, j, k] = mu_p[k] * i_l[j] - s_e * data_43gost.p[0] * (pi_y + delta_pi_y)
+
+                as_set_active[i, j, k] = (rho_gost * (np.pi * r ** 2 / 4) * (
+                        velocity_set_active[i, j, k - 1] ** 2 / 2) * cx_int_tab * i_f_estimation) / m_ost[i, j, k]
+                as_tan_active[i, j, k] = - as_set_active[i, j, k] - acc_gravity_gost * np.sin(
+                    alpha_set_active[i, j, k - 1]) + p_sum[i, j, k] / m_ost[i, j, k]
+
+                velocity_set_active[i, j, k] = velocity_set_active[i, j, k - 1] + as_tan_active[i, j, k] * time_step
+                alpha_set_active[i, j, k] = alpha_set_active[i, j, k - 1] - (
+                        acc_gravity_gost * np.cos(alpha_set_active[i, j, k - 1]) / velocity_set_active[
+                    i, j, k]) * time_step + (b_y[i] * p_sum[i, j, k]) / (
+                                                    m_ost[i, j, k] * velocity_set_active[i, j, k]) * time_step
+                as_x_set_active[i, j, k] = - as_set_active[i, j, k] * np.cos(alpha_set_active[i, j, k]) + p_sum[
+                    i, j, k] / m_ost[i, j, k] * np.cos(alpha_set_active[i, j, k])
+                as_h_set_active[i, j, k] = - as_set_active[i, j, k] * np.sin(alpha_set_active[i, j, k]) + p_sum[
+                    i, j, k] / m_ost[i, j, k] * np.sin(alpha_set_active[i, j, k]) - acc_gravity_gost
+                velocity_x_set_active[i, j, k] = velocity_set_active[i, j, k] * np.cos(alpha_set_active[i, j, k])
+                velocity_h_set_active[i, j, k] = velocity_set_active[i, j, k] * np.sin(alpha_set_active[i, j, k])
+                x_set_active[i, j, k] = x_set_active[i, j, k - 1] + velocity_x_set_active[i, j, k] * time_step
+                h_set_active[i, j, k] = h_set_active[i, j, k - 1] + velocity_h_set_active[i, j, k] * time_step
+
+            norm_nev_x[i, j] = abs(velocity_x_set_active[i, j, -1] - x_est_stor_two_part[0, 1])
+            norm_nev_h[i, j] = abs(velocity_h_set_active[i, j, -1] - x_est_stor_two_part[0, 4])
+            norm_nev[i, j] = norm_nev_x[i, j] + norm_nev_h[i, j]
+
+    row, col = np.where(norm_nev == norm_nev.min())
+
+    x_set_active = x_set_active[row, col, :].reshape(len(time_meas))
+    h_set_active = h_set_active[row, col, :].reshape(len(time_meas))
+    velocity_x_set_active = velocity_x_set_active[row, col, :].reshape(len(time_meas))
+    velocity_h_set_active = velocity_h_set_active[row, col, :].reshape(len(time_meas))
+    as_x_set_active = as_x_set_active[row, col, :].reshape(len(time_meas))
+    as_h_set_active = as_h_set_active[row, col, :].reshape(len(time_meas))
+
+    y_set_active = np.zeros(len(time_meas))
+    y_set_active[...] = x_est_stor_one_part[-1, 6]
+    velocity_y_set_active = np.zeros(len(time_meas))
+    velocity_y_set_active[...] = x_est_stor_one_part[-1, 7]
+    as_y_set_active = np.zeros(len(time_meas))
+    as_y_set_active[...] = x_est_stor_one_part[-1, 8]
+
+    x_est_stor_active = np.column_stack((x_set_active, velocity_x_set_active, as_x_set_active, h_set_active,
+                                         velocity_h_set_active, as_h_set_active, y_set_active, velocity_y_set_active,
+                                         as_y_set_active))
+
+    y_ext_stor_active = np.array([np.sqrt(
+        (x_est_stor_active[:, 0] - x_l) ** 2 + (x_est_stor_active[:, 6] - y_l) ** 2 + (
+                    x_est_stor_active[:, 3] - h_l) ** 2),
+        (x_est_stor_active[:, 1] * (x_est_stor_active[:, 0] - x_l) + x_est_stor_active[:, 4] * (
+                x_est_stor_active[:, 3] - h_l) + x_est_stor_active[:, 7] * (
+                 x_est_stor_active[:, 6] - y_l)) / np.sqrt(
+            (x_est_stor_active[:, 0] - x_l) ** 2 + (x_est_stor_active[:, 6] - y_l) ** 2 + (
+                    x_est_stor_active[:, 3] - h_l) ** 2),
+        np.arcsin((x_est_stor_active[:, 3] - h_l) / np.sqrt(
+            (x_est_stor_active[:, 0] - x_l) ** 2 + (x_est_stor_active[:, 6] - y_l) ** 2 + (
+                    x_est_stor_active[:, 3] - h_l) ** 2))])
+
+    return x_est_stor_active, y_ext_stor_active.T, time_meas
+
+
 def emissions_theta(theta_meas, thres_theta=0.015):
     '''
     exclusion of single emissions from measurements of angle (theta)
@@ -786,10 +954,7 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
                          (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2),
                      np.arcsin(
                          (x_ext[3] - h_l) / np.sqrt(
-                             (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2)),
-                     x_ext[6],
-                     x_ext[2],
-                     x_ext[5]]
+                             (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2))]
 
             y_ext_stor.append(y_ext)
 
@@ -811,11 +976,173 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
                                    x_est_prev[6] - y_l)) / np.sqrt(
                               (x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2),
                           np.arcsin((x_est_prev[3] - h_l) / np.sqrt(
-                              (x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2)),
-                          x_est_prev[6],
-                          x_est_prev[2],
-                          x_est_prev[5]]
+                              (x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2))]
+
             y_ext_stor.append(y_ext_init)
+
+    return np.array(x_est_stor), np.array(y_ext_stor), time_meas
+
+
+def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, h_l, time_meas, as_x_set, as_h_set,
+                                              sigma_ksi_x=0.05, sigma_ksi_h=0.05, sigma_ksi_y=0.001, sigma_n_R=4,
+                                              sigma_n_Vr=1,
+                                              sigma_n_theta=np.deg2rad(1), sigma_n_y=0.1, sigma_n_Ax=0.5,
+                                              sigma_n_Ah=0.5,
+                                              time_step=0.05):
+    '''
+    trajectory points for measurements
+    :param y_meas_set: list
+    :param x_est_init: list
+    :param x_l: float
+    :param y_l: float
+    :param h_l: float
+    :param time_meas: ndarray
+    :param as_x_set: ndarray
+    :param as_h_set: ndarray
+    :param sigma_ksi_x: float
+    :param sigma_ksi_h: float
+    :param sigma_ksi_y: float
+    :param sigma_n_R: int
+    :param sigma_n_Vr: int
+    :param sigma_n_theta: float
+    :param sigma_n_y: float
+    :param sigma_n_Ax: float
+    :param sigma_n_Ah: float
+    :param time_step: float
+    :return: x_est_stor: ndarray
+             y_est_stor: ndarray
+             time_meas: ndarray
+    '''
+
+    x_est_prev = x_est_init
+    Dx_est_prev = np.eye(9)
+
+    x_est_stor = []
+
+    D_ksi = np.array([[sigma_ksi_x ** 2, 0, 0], [0, sigma_ksi_h ** 2, 0], [0, 0, sigma_ksi_y ** 2]])
+    I = np.eye(9)
+
+    Dn = np.array([[sigma_n_R ** 2, 0, 0, 0, 0, 0],
+                   [0, sigma_n_Vr ** 2, 0, 0, 0, 0],
+                   [0, 0, sigma_n_theta ** 2, 0, 0, 0],
+                   [0, 0, 0, sigma_n_y ** 2, 0, 0],
+                   [0, 0, 0, 0, sigma_n_Ax ** 2, 0],
+                   [0, 0, 0, 0, 0, sigma_n_Ah ** 2]])
+
+    y_ext_stor = []
+
+    G = np.array([[0, 0, 0], [0, 0, 0], [1, 0, 0], [0, 0, 0], [0, 0, 0],
+                  [0, 1, 0], [0, 0, 0], [0, 0, 0], [0, 0, 1]])
+
+    x_est_stor.append(x_est_prev)
+
+    y_ext_init = [np.sqrt((x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2),
+                  (x_est_prev[1] * (x_est_prev[0] - x_l) + x_est_prev[4] * (x_est_prev[3] - h_l) + x_est_prev[
+                      7] * (
+                           x_est_prev[6] - y_l)) / np.sqrt(
+                      (x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2),
+                  np.arcsin((x_est_prev[3] - h_l) / np.sqrt(
+                      (x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2)),
+                  x_est_prev[6],
+                  x_est_prev[2],
+                  x_est_prev[5]]
+
+    y_ext_stor.append(y_ext_init)
+
+    for i in range(1, len(time_meas)):
+        x_ext = np.zeros(9)
+        x_ext[1] = x_est_prev[1] + x_est_prev[2] * time_step
+        x_ext[4] = x_est_prev[4] + x_est_prev[5] * time_step
+        x_ext[7] = x_est_prev[7] + x_est_prev[8] * time_step
+
+        x_ext[0] = x_est_prev[0] + x_est_prev[1] * time_step
+        x_ext[2] = x_est_prev[2] + (as_x_set[i] - as_x_set[i - 1])
+        x_ext[3] = x_est_prev[3] + x_est_prev[4] * time_step
+        x_ext[5] = x_est_prev[5] + (as_h_set[i] - as_h_set[i - 1])
+        x_ext[6] = x_est_prev[6] + x_est_prev[7] * time_step
+        x_ext[8] = x_est_prev[8]
+
+        dfdt = np.array([[1, time_step, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 1, time_step, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 1, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 1, time_step, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 1, time_step, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 1, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0, 1, time_step, 0],
+                         [0, 0, 0, 0, 0, 0, 0, 1, time_step],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 1]])
+
+        Dx_ext = dfdt.dot(Dx_est_prev).dot(dfdt.T) + G.dot(D_ksi).dot(G.T)
+
+        H = [[(x_ext[0] - x_l) / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2), 0,
+              0, (x_ext[3] - h_l) / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2),
+              0,
+              0, (x_ext[6] - y_l) / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2),
+              0,
+              0]]
+
+        H3 = np.zeros(9)
+
+        H3[0] = x_ext[1] / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) - (
+                x_ext[0] - x_l) * (
+                        x_ext[1] * (x_ext[0] - x_l) + x_ext[4] * (x_ext[3] - h_l) + x_ext[7] * (x_ext[6] - y_l)) / (
+                        (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) ** 1.5
+        H3[3] = x_ext[4] / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) - (
+                x_ext[3] - h_l) * (
+                        x_ext[1] * (x_ext[0] - x_l) + x_ext[4] * (x_ext[3] - h_l) + x_ext[7] * (x_ext[6] - y_l)) / (
+                        (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) ** 1.5
+        H3[6] = x_ext[7] / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) - (
+                x_ext[6] - y_l) * (
+                        x_ext[1] * (x_ext[0] - x_l) + x_ext[4] * (x_ext[3] - h_l) + x_ext[7] * (x_ext[6] - y_l)) / (
+                        (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) ** 1.5
+        H3[1] = (x_ext[0] - x_l) / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2)
+        H3[4] = (x_ext[3] - h_l) / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2)
+        H3[7] = (x_ext[6] - y_l) / np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2)
+
+        H.append(list(H3))
+
+        H5 = np.zeros(9)
+
+        H5[0] = (x_ext[3] - h_l) * (x_ext[0] - x_l) / (
+                np.sqrt(1 - (x_ext[3] - h_l) ** 2 / (
+                        (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2)) * (
+                        (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) ** 1.5)
+        H5[3] = (((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) ** -0.5 - (
+                x_ext[3] - h_l) ** 2 / (
+                         (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) ** 1.5) / np.sqrt(
+            1 - (x_ext[3] - h_l) ** 2 / ((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2))
+        H5[6] = (x_ext[3] - h_l) * (x_ext[6] - y_l) / (
+                np.sqrt(1 - (x_ext[3] - h_l) ** 2 / (
+                        (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2)) * (
+                        (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2) ** 1.5)
+
+        H.append(list(H5))
+        H.append([0, 0, 0, 0, 0, 0, 1, 0, 0])
+        H.append([0, 0, 1, 0, 0, 0, 0, 0, 0])
+        H.append([0, 0, 0, 0, 0, 1, 0, 0, 0])
+
+        H = np.array(H)
+
+        S = H.dot(Dx_ext).dot(H.T) + Dn
+        K = Dx_ext.dot(H.T).dot(np.linalg.inv(S))
+
+        y_ext = [np.sqrt((x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2),
+                 (x_ext[1] * (x_ext[0] - x_l) + x_ext[4] * (x_ext[3] - h_l) + x_ext[7] * (
+                         x_ext[6] - y_l)) / np.sqrt(
+                     (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2),
+                 np.arcsin(
+                     (x_ext[3] - h_l) / np.sqrt(
+                         (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2))]
+
+        y_ext_stor.append(y_ext)
+
+        x_est_prev = x_ext + K.dot(
+            (np.array(
+                [y_meas_set[0][i], y_meas_set[1][i], y_meas_set[2][i], y_meas_set[3][i],
+                 as_x_set[i], as_h_set[i]]) - np.array(y_ext)))
+
+        Dx_est_prev = (I - K.dot(H)).dot(Dx_ext)
+        x_est_stor.append(x_est_prev)
 
     return np.array(x_est_stor), np.array(y_ext_stor), time_meas
 
@@ -910,36 +1237,22 @@ def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l
                     x_est_fin_stor[:, 3] - h_l) ** 2),
         np.arcsin((x_est_fin_stor[:, 3] - h_l) / np.sqrt(
             (x_est_fin_stor[:, 0] - x_l) ** 2 + (x_est_fin_stor[:, 6] - y_l) ** 2 + (
-                    x_est_fin_stor[:, 3] - h_l) ** 2)),
-        x_est_fin_stor[:, 6],
-        x_est_fin_stor[:, 2],
-        x_est_fin_stor[:, 5]])
+                    x_est_fin_stor[:, 3] - h_l) ** 2))])
 
     return x_est_fin_stor, y_ext_init_stor.T, np.array(time_meas_fin_stor)
 
 
-def merging_to_date_trajectory(time_meas_stor, x_est_stor, y_ext_stor, time_meas_fin_stor, x_est_fin_stor,
-                               y_ext_fin_stor):
+def merging_to_date_trajectory(time_meas_stor, x_est_stor, y_ext_stor):
     '''
     :param time_meas_stor: ndarray
     :param x_est_stor: ndarray
     :param y_ext_stor: ndarray
-    :param time_meas_fin_stor: ndarray
-    :param x_est_fin_stor: ndarray
-    :param y_ext_fin_stor: ndarray
     :return: data_stor: DataFrame
     '''
     data_stor_x = pd.DataFrame(data=x_est_stor[:-1], columns=['x', 'Vx', 'Ax', 'y', 'Vy', 'Ay', 'z', 'Vz', 'Az'])
     data_stor_x.insert(0, 't', time_meas_stor[:-1])
-    data_stor_y = pd.DataFrame(data=y_ext_stor[:-1, :3], columns=['R', 'Vr', 'theta'])
+    data_stor_y = pd.DataFrame(data=y_ext_stor[:-1], columns=['R', 'Vr', 'theta'])
     data_stor = pd.concat([data_stor_x, data_stor_y], axis=1)
-
-    data_stor_x_fin = pd.DataFrame(data=x_est_fin_stor, columns=['x', 'Vx', 'Ax', 'y', 'Vy', 'Ay', 'z', 'Vz', 'Az'])
-    data_stor_x_fin.insert(0, 't', time_meas_fin_stor)
-    data_stor_y_fin = pd.DataFrame(data=y_ext_fin_stor[:, :3], columns=['R', 'Vr', 'theta'])
-    data_stor_fin = pd.concat([data_stor_x_fin, data_stor_y_fin], axis=1)
-
-    data_stor = pd.concat([data_stor, data_stor_fin], ignore_index=True)
 
     return data_stor
 
