@@ -915,7 +915,7 @@ def process_measurements(data, config):
                     (y_ext_stor_one_part, y_ext_stor_active, y_ext_stor_two_part_active, y_ext_fin_stor))
                 time_meas_full = np.concatenate(
                     (time_meas_stor_one_part, time_meas_active, time_meas_stor_two_part_active, time_meas_fin_stor))
-                
+
                 data_stor = merging_to_date_trajectory(time_meas_full, x_est_stor_full, y_ext_stor_full)
 
                 time_fall = data_stor.values[-1][0]
