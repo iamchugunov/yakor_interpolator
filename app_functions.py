@@ -158,7 +158,7 @@ def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor
 
     y_ext_stor_active = np.array([np.sqrt(
         (x_est_stor_active[:, 0] - x_l) ** 2 + (x_est_stor_active[:, 6] - y_l) ** 2 + (
-                    x_est_stor_active[:, 3] - h_l) ** 2),
+                x_est_stor_active[:, 3] - h_l) ** 2),
         (x_est_stor_active[:, 1] * (x_est_stor_active[:, 0] - x_l) + x_est_stor_active[:, 4] * (
                 x_est_stor_active[:, 3] - h_l) + x_est_stor_active[:, 7] * (
                  x_est_stor_active[:, 6] - y_l)) / np.sqrt(
@@ -954,7 +954,8 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
                          (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2),
                      np.arcsin(
                          (x_ext[3] - h_l) / np.sqrt(
-                             (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2))]
+                             (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2)),
+                     x_ext[6], x_ext[2], x_ext[5]]
 
             y_ext_stor.append(y_ext)
 
@@ -976,11 +977,16 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
                                    x_est_prev[6] - y_l)) / np.sqrt(
                               (x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2),
                           np.arcsin((x_est_prev[3] - h_l) / np.sqrt(
-                              (x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2))]
+                              (x_est_prev[0] - x_l) ** 2 + (x_est_prev[6] - y_l) ** 2 + (x_est_prev[3] - h_l) ** 2)),
+                          x_est_prev[6], x_est_prev[2], x_est_prev[5]]
 
             y_ext_stor.append(y_ext_init)
 
-    return np.array(x_est_stor), np.array(y_ext_stor), time_meas
+    x_est_stor = np.array(x_est_stor)
+    y_ext_stor = np.array(y_ext_stor)
+    y_ext_stor = y_ext_stor[:, :3]
+
+    return x_est_stor, y_ext_stor, time_meas
 
 
 def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, h_l, time_meas, as_x_set, as_h_set,
@@ -1132,7 +1138,8 @@ def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, 
                      (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2),
                  np.arcsin(
                      (x_ext[3] - h_l) / np.sqrt(
-                         (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2))]
+                         (x_ext[0] - x_l) ** 2 + (x_ext[6] - y_l) ** 2 + (x_ext[3] - h_l) ** 2)),
+                 x_ext[6], x_ext[2], x_ext[5]]
 
         y_ext_stor.append(y_ext)
 
@@ -1144,7 +1151,11 @@ def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, 
         Dx_est_prev = (I - K.dot(H)).dot(Dx_ext)
         x_est_stor.append(x_est_prev)
 
-    return np.array(x_est_stor), np.array(y_ext_stor), time_meas
+    x_est_stor = np.array(x_est_stor)
+    y_ext_stor = np.array(y_ext_stor)
+    y_ext_stor = y_ext_stor[:, :3]
+
+    return x_est_stor, y_ext_stor, time_meas
 
 
 def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l, y_l, h_l, cannon_h, time_step=0.05):
@@ -1237,9 +1248,13 @@ def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l
                     x_est_fin_stor[:, 3] - h_l) ** 2),
         np.arcsin((x_est_fin_stor[:, 3] - h_l) / np.sqrt(
             (x_est_fin_stor[:, 0] - x_l) ** 2 + (x_est_fin_stor[:, 6] - y_l) ** 2 + (
-                    x_est_fin_stor[:, 3] - h_l) ** 2))])
+                    x_est_fin_stor[:, 3] - h_l) ** 2)),
+        x_est_fin_stor[:, 6], x_est_fin_stor[:, 2], x_est_fin_stor[:, 5]])
 
-    return x_est_fin_stor, y_ext_init_stor.T, np.array(time_meas_fin_stor)
+    y_ext_init_stor = y_ext_init_stor.T
+    y_ext_init_stor = y_ext_init_stor[:, :3]
+
+    return x_est_fin_stor, y_ext_init_stor, np.array(time_meas_fin_stor)
 
 
 def merging_to_date_trajectory(time_meas_stor, x_est_stor, y_ext_stor):
