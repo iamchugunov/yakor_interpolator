@@ -1,6 +1,8 @@
 import time
 import sys
 import json
+
+import numpy as np
 import pymap3d as pm
 
 from app_functions import *
@@ -120,12 +122,13 @@ def process_measurements(data, config):
 
             try:
 
-                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=0.04,
+                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e0,
                                                     sigma_n=5e-3)
                 range_smoother, radial_velocity_smoother = rts_coord_smoother(time_meas, range_meas,
                                                                               radial_velocity_meas, sigma_coord=-40,
-                                                                              sigma_ksi=10, sigma_n1=1,
-                                                                              sigma_n2=0.03)
+                                                                              sigma_ksi=1e1,
+                                                                              sigma_n1=0.1e1,
+                                                                              sigma_n2=0.03e0)
 
                 time_meas_full, range_meas_full, radial_velocity_meas_full, theta_meas_full = time_step_filling_data(
                     time_meas, range_smoother, radial_velocity_smoother, theta_smoother)
@@ -173,31 +176,39 @@ def process_measurements(data, config):
                 x_est_init = [0, velocity_x_set_control[0], as_x_set_control[0], 0,
                               velocity_h_set_control[0], as_h_set_control[0], 0, 0, 0]
 
-                x_est_stor, y_ext_stor, time_meas_stor = trajectory_points_approximation(y_meas_set, x_est_init,
-                                                                                         time_meas_full, config.loc_X,
-                                                                                         config.loc_Y, config.loc_Z,
-                                                                                         time_meas_control,
-                                                                                         x_set_control, h_set_control,
-                                                                                         velocity_x_set_control,
-                                                                                         velocity_h_set_control,
-                                                                                         as_x_set_control,
-                                                                                         as_h_set_control)
+                x_est_stor, y_ext_stor, cx_est_stor, time_meas_stor = trajectory_points_approximation(y_meas_set,
+                                                                                                      x_est_init,
+                                                                                                      time_meas_full,
+                                                                                                      config.loc_X,
+                                                                                                      config.loc_Y,
+                                                                                                      config.loc_Z,
+                                                                                                      config.can_H,
+                                                                                                      time_meas_control,
+                                                                                                      x_set_control,
+                                                                                                      h_set_control,
+                                                                                                      velocity_x_set_control,
+                                                                                                      velocity_h_set_control,
+                                                                                                      as_x_set_control,
+                                                                                                      as_h_set_control)
 
-                x_est_fin_stor, y_ext_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(x_est_stor,
-                                                                                                 time_meas_stor,
-                                                                                                 i_f_estimation,
-                                                                                                 config.r, config.m,
-                                                                                                 config.loc_X,
-                                                                                                 config.loc_Y,
-                                                                                                 config.loc_Z,
-                                                                                                 config.can_H)
+                x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
+                    x_est_stor,
+                    cx_est_stor,
+                    time_meas_stor,
+                    i_f_estimation,
+                    config.r, config.m,
+                    config.loc_X,
+                    config.loc_Y,
+                    config.loc_Z,
+                    config.can_H)
 
                 sko_range, sko_radial_velocity, sko_theta = sko_error_meas(y_ext_stor, time_meas_stor, time_meas,
                                                                            range_smoother, radial_velocity_smoother,
                                                                            theta_smoother)
 
                 time_meas_full = np.concatenate((time_meas_stor, time_meas_fin_stor))
-                x_est_stor_full = np.concatenate((x_est_stor, x_est_fin_stor))
+                x_est_stor_full = np.concatenate(
+                    (np.column_stack((x_est_stor, cx_est_stor)), np.column_stack((x_est_fin_stor, cx_est_fin_stor))))
                 y_ext_stor_full = np.concatenate((y_ext_stor, y_ext_fin_stor))
 
                 data_stor = merging_to_date_trajectory(time_meas_full, x_est_stor_full, y_ext_stor_full)
@@ -221,7 +232,7 @@ def process_measurements(data, config):
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz),
                          "Vd": x_fall * np.sin(3 * sko_theta_tz),
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, " SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -237,12 +248,13 @@ def process_measurements(data, config):
 
             try:
 
-                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=0.04,
+                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e0,
                                                     sigma_n=5e-3)
                 range_smoother, radial_velocity_smoother = rts_coord_smoother(time_meas, range_meas,
                                                                               radial_velocity_meas, sigma_coord=-40,
-                                                                              sigma_ksi=10, sigma_n1=1,
-                                                                              sigma_n2=0.03)
+                                                                              sigma_ksi=1e1,
+                                                                              sigma_n1=0.1e1,
+                                                                              sigma_n2=0.03e0)
 
                 time_meas_full, range_meas_full, radial_velocity_meas_full, theta_meas_full = time_step_filling_data(
                     time_meas, range_smoother, radial_velocity_smoother, theta_smoother)
@@ -259,8 +271,8 @@ def process_measurements(data, config):
                                                                                                    config.can_H,
                                                                                                    window_length=5)
 
-                i_f_estimation = approximate_evaluation_shape_factor(i_f_from_acceleration_x, std_shift_length=2,
-                                                                     std_window_length=8)
+                i_f_estimation = approximate_evaluation_shape_factor(i_f_from_acceleration_x, std_shift_length=3,
+                                                                     std_window_length=10)
 
                 velocity_0_estimation = initial_velocity_estimation_calculation_norm(time_meas_full, i_f_estimation,
                                                                                      velocity_abs_poly_estimation,
@@ -290,31 +302,39 @@ def process_measurements(data, config):
                 x_est_init = [0, velocity_x_set_control[0], as_x_set_control[0], 0,
                               velocity_h_set_control[0], as_h_set_control[0], 0, 0, 0]
 
-                x_est_stor, y_ext_stor, time_meas_stor = trajectory_points_approximation(y_meas_set, x_est_init,
-                                                                                         time_meas_full, config.loc_X,
-                                                                                         config.loc_Y, config.loc_Z,
-                                                                                         time_meas_control,
-                                                                                         x_set_control, h_set_control,
-                                                                                         velocity_x_set_control,
-                                                                                         velocity_h_set_control,
-                                                                                         as_x_set_control,
-                                                                                         as_h_set_control)
+                x_est_stor, y_ext_stor, cx_est_stor, time_meas_stor = trajectory_points_approximation(y_meas_set,
+                                                                                                      x_est_init,
+                                                                                                      time_meas_full,
+                                                                                                      config.loc_X,
+                                                                                                      config.loc_Y,
+                                                                                                      config.loc_Z,
+                                                                                                      config.can_H,
+                                                                                                      time_meas_control,
+                                                                                                      x_set_control,
+                                                                                                      h_set_control,
+                                                                                                      velocity_x_set_control,
+                                                                                                      velocity_h_set_control,
+                                                                                                      as_x_set_control,
+                                                                                                      as_h_set_control)
 
-                x_est_fin_stor, y_ext_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(x_est_stor,
-                                                                                                 time_meas_stor,
-                                                                                                 i_f_estimation,
-                                                                                                 config.r, config.m,
-                                                                                                 config.loc_X,
-                                                                                                 config.loc_Y,
-                                                                                                 config.loc_Z,
-                                                                                                 config.can_H)
+                x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
+                    x_est_stor,
+                    cx_est_stor,
+                    time_meas_stor,
+                    i_f_estimation,
+                    config.r, config.m,
+                    config.loc_X,
+                    config.loc_Y,
+                    config.loc_Z,
+                    config.can_H)
 
                 sko_range, sko_radial_velocity, sko_theta = sko_error_meas(y_ext_stor, time_meas_stor, time_meas,
                                                                            range_smoother, radial_velocity_smoother,
                                                                            theta_smoother)
 
                 time_meas_full = np.concatenate((time_meas_stor, time_meas_fin_stor))
-                x_est_stor_full = np.concatenate((x_est_stor, x_est_fin_stor))
+                x_est_stor_full = np.concatenate(
+                    (np.column_stack((x_est_stor, cx_est_stor)), np.column_stack((x_est_fin_stor, cx_est_fin_stor))))
                 y_ext_stor_full = np.concatenate((y_ext_stor, y_ext_fin_stor))
 
                 data_stor = merging_to_date_trajectory(time_meas_full, x_est_stor_full, y_ext_stor_full)
@@ -338,7 +358,7 @@ def process_measurements(data, config):
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz),
                          "Vd": x_fall * np.sin(3 * sko_theta_tz),
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, " SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -354,11 +374,13 @@ def process_measurements(data, config):
 
             try:
 
-                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=0.1, sigma_n=5e-3)
+                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e-1,
+                                                    sigma_n=5e-3)
                 range_smoother, radial_velocity_smoother = rts_coord_smoother(time_meas, range_meas,
                                                                               radial_velocity_meas, sigma_coord=-40,
-                                                                              sigma_ksi=10, sigma_n1=1,
-                                                                              sigma_n2=0.3)
+                                                                              sigma_ksi=1e1,
+                                                                              sigma_n1=0.1e1,
+                                                                              sigma_n2=0.03e0)
 
                 time_meas_full, range_meas_full, radial_velocity_meas_full, theta_meas_full = time_step_filling_data(
                     time_meas, range_smoother, radial_velocity_smoother, theta_smoother)
@@ -406,31 +428,39 @@ def process_measurements(data, config):
                 x_est_init = [0, velocity_x_set_control[0], as_x_set_control[0], 0,
                               velocity_h_set_control[0], as_h_set_control[0], 0, 0, 0]
 
-                x_est_stor, y_ext_stor, time_meas_stor = trajectory_points_approximation(y_meas_set, x_est_init,
-                                                                                         time_meas_full, config.loc_X,
-                                                                                         config.loc_Y, config.loc_Z,
-                                                                                         time_meas_control,
-                                                                                         x_set_control, h_set_control,
-                                                                                         velocity_x_set_control,
-                                                                                         velocity_h_set_control,
-                                                                                         as_x_set_control,
-                                                                                         as_h_set_control)
+                x_est_stor, y_ext_stor, cx_est_stor, time_meas_stor = trajectory_points_approximation(y_meas_set,
+                                                                                                      x_est_init,
+                                                                                                      time_meas_full,
+                                                                                                      config.loc_X,
+                                                                                                      config.loc_Y,
+                                                                                                      config.loc_Z,
+                                                                                                      config.can_H,
+                                                                                                      time_meas_control,
+                                                                                                      x_set_control,
+                                                                                                      h_set_control,
+                                                                                                      velocity_x_set_control,
+                                                                                                      velocity_h_set_control,
+                                                                                                      as_x_set_control,
+                                                                                                      as_h_set_control)
 
-                x_est_fin_stor, y_ext_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(x_est_stor,
-                                                                                                 time_meas_stor,
-                                                                                                 i_f_estimation,
-                                                                                                 config.r, config.m,
-                                                                                                 config.loc_X,
-                                                                                                 config.loc_Y,
-                                                                                                 config.loc_Z,
-                                                                                                 config.can_H)
+                x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
+                    x_est_stor,
+                    cx_est_stor,
+                    time_meas_stor,
+                    i_f_estimation,
+                    config.r, config.m,
+                    config.loc_X,
+                    config.loc_Y,
+                    config.loc_Z,
+                    config.can_H)
 
                 sko_range, sko_radial_velocity, sko_theta = sko_error_meas(y_ext_stor, time_meas_stor, time_meas,
                                                                            range_smoother, radial_velocity_smoother,
                                                                            theta_smoother)
 
                 time_meas_full = np.concatenate((time_meas_stor, time_meas_fin_stor))
-                x_est_stor_full = np.concatenate((x_est_stor, x_est_fin_stor))
+                x_est_stor_full = np.concatenate(
+                    (np.column_stack((x_est_stor, cx_est_stor)), np.column_stack((x_est_fin_stor, cx_est_fin_stor))))
                 y_ext_stor_full = np.concatenate((y_ext_stor, y_ext_fin_stor))
 
                 data_stor = merging_to_date_trajectory(time_meas_full, x_est_stor_full, y_ext_stor_full)
@@ -449,7 +479,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, " SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -486,11 +516,13 @@ def process_measurements(data, config):
                 radial_velocity_meas = np.delete(radial_velocity_meas, bad_ind)
                 theta_meas = np.delete(theta_meas, bad_ind)
 
-                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=0.1, sigma_n=5e-3)
+                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e-1,
+                                                    sigma_n=5e-3)
                 range_smoother, radial_velocity_smoother = rts_coord_smoother(time_meas, range_meas,
                                                                               radial_velocity_meas, sigma_coord=-40,
-                                                                              sigma_ksi=10, sigma_n1=1,
-                                                                              sigma_n2=0.3)
+                                                                              sigma_ksi=1e1,
+                                                                              sigma_n1=0.1e1,
+                                                                              sigma_n2=0.03e0)
 
                 time_meas_full, range_meas_full, radial_velocity_meas_full, theta_meas_full = time_step_filling_data(
                     time_meas, range_smoother, radial_velocity_smoother, theta_smoother)
@@ -538,31 +570,39 @@ def process_measurements(data, config):
                 x_est_init = [0, velocity_x_set_control[0], as_x_set_control[0], 0,
                               velocity_h_set_control[0], as_h_set_control[0], 0, 0, 0]
 
-                x_est_stor, y_ext_stor, time_meas_stor = trajectory_points_approximation(y_meas_set, x_est_init,
-                                                                                         time_meas_full, config.loc_X,
-                                                                                         config.loc_Y, config.loc_Z,
-                                                                                         time_meas_control,
-                                                                                         x_set_control, h_set_control,
-                                                                                         velocity_x_set_control,
-                                                                                         velocity_h_set_control,
-                                                                                         as_x_set_control,
-                                                                                         as_h_set_control)
+                x_est_stor, y_ext_stor, cx_est_stor, time_meas_stor = trajectory_points_approximation(y_meas_set,
+                                                                                                      x_est_init,
+                                                                                                      time_meas_full,
+                                                                                                      config.loc_X,
+                                                                                                      config.loc_Y,
+                                                                                                      config.loc_Z,
+                                                                                                      config.can_H,
+                                                                                                      time_meas_control,
+                                                                                                      x_set_control,
+                                                                                                      h_set_control,
+                                                                                                      velocity_x_set_control,
+                                                                                                      velocity_h_set_control,
+                                                                                                      as_x_set_control,
+                                                                                                      as_h_set_control)
 
-                x_est_fin_stor, y_ext_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(x_est_stor,
-                                                                                                 time_meas_stor,
-                                                                                                 i_f_estimation,
-                                                                                                 config.r, config.m,
-                                                                                                 config.loc_X,
-                                                                                                 config.loc_Y,
-                                                                                                 config.loc_Z,
-                                                                                                 config.can_H)
+                x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
+                    x_est_stor,
+                    cx_est_stor,
+                    time_meas_stor,
+                    i_f_estimation,
+                    config.r, config.m,
+                    config.loc_X,
+                    config.loc_Y,
+                    config.loc_Z,
+                    config.can_H)
 
                 sko_range, sko_radial_velocity, sko_theta = sko_error_meas(y_ext_stor, time_meas_stor, time_meas,
                                                                            range_smoother, radial_velocity_smoother,
                                                                            theta_smoother)
 
                 time_meas_full = np.concatenate((time_meas_stor, time_meas_fin_stor))
-                x_est_stor_full = np.concatenate((x_est_stor, x_est_fin_stor))
+                x_est_stor_full = np.concatenate(
+                    (np.column_stack((x_est_stor, cx_est_stor)), np.column_stack((x_est_fin_stor, cx_est_fin_stor))))
                 y_ext_stor_full = np.concatenate((y_ext_stor, y_ext_fin_stor))
 
                 data_stor = merging_to_date_trajectory(time_meas_full, x_est_stor_full, y_ext_stor_full)
@@ -579,8 +619,9 @@ def process_measurements(data, config):
 
                 track = {"points": json.loads(data_stor.to_json(orient='index')), "endpoint_x": x_fall,
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
-                         "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation, "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, " SKO_theta": sko_theta,
+                         "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
+                         "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
+                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -599,11 +640,13 @@ def process_measurements(data, config):
                 K1 = 0.00461217647718868
                 K2 = -2.04678100654676e-07
 
-                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=0.1, sigma_n=5e-3)
+                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e-1,
+                                                    sigma_n=5e-3)
                 range_smoother, radial_velocity_smoother = rts_coord_smoother(time_meas, range_meas,
                                                                               radial_velocity_meas, sigma_coord=-40,
-                                                                              sigma_ksi=10, sigma_n1=1,
-                                                                              sigma_n2=0.3)
+                                                                              sigma_ksi=1e1,
+                                                                              sigma_n1=0.1e1,
+                                                                              sigma_n2=0.03e0)
 
                 time_meas_full, range_meas_full, radial_velocity_meas_full, theta_meas_full = time_step_filling_data(
                     time_meas, range_smoother, radial_velocity_smoother, theta_smoother)
@@ -651,31 +694,39 @@ def process_measurements(data, config):
                 x_est_init = [0, velocity_x_set_control[0], as_x_set_control[0], 0,
                               velocity_h_set_control[0], as_h_set_control[0], 0, 0, 0]
 
-                x_est_stor, y_ext_stor, time_meas_stor = trajectory_points_approximation(y_meas_set, x_est_init,
-                                                                                         time_meas_full, config.loc_X,
-                                                                                         config.loc_Y, config.loc_Z,
-                                                                                         time_meas_control,
-                                                                                         x_set_control, h_set_control,
-                                                                                         velocity_x_set_control,
-                                                                                         velocity_h_set_control,
-                                                                                         as_x_set_control,
-                                                                                         as_h_set_control)
+                x_est_stor, y_ext_stor, cx_est_stor, time_meas_stor = trajectory_points_approximation(y_meas_set,
+                                                                                                      x_est_init,
+                                                                                                      time_meas_full,
+                                                                                                      config.loc_X,
+                                                                                                      config.loc_Y,
+                                                                                                      config.loc_Z,
+                                                                                                      config.can_H,
+                                                                                                      time_meas_control,
+                                                                                                      x_set_control,
+                                                                                                      h_set_control,
+                                                                                                      velocity_x_set_control,
+                                                                                                      velocity_h_set_control,
+                                                                                                      as_x_set_control,
+                                                                                                      as_h_set_control)
 
-                x_est_fin_stor, y_ext_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(x_est_stor,
-                                                                                                 time_meas_stor,
-                                                                                                 i_f_estimation,
-                                                                                                 config.r, config.m,
-                                                                                                 config.loc_X,
-                                                                                                 config.loc_Y,
-                                                                                                 config.loc_Z,
-                                                                                                 config.can_H)
+                x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
+                    x_est_stor,
+                    cx_est_stor,
+                    time_meas_stor,
+                    i_f_estimation,
+                    config.r, config.m,
+                    config.loc_X,
+                    config.loc_Y,
+                    config.loc_Z,
+                    config.can_H)
 
                 sko_range, sko_radial_velocity, sko_theta = sko_error_meas(y_ext_stor, time_meas_stor, time_meas,
                                                                            range_smoother, radial_velocity_smoother,
                                                                            theta_smoother)
 
                 time_meas_full = np.concatenate((time_meas_stor, time_meas_fin_stor))
-                x_est_stor_full = np.concatenate((x_est_stor, x_est_fin_stor))
+                x_est_stor_full = np.concatenate(
+                    (np.column_stack((x_est_stor, cx_est_stor)), np.column_stack((x_est_fin_stor, cx_est_fin_stor))))
                 y_ext_stor_full = np.concatenate((y_ext_stor, y_ext_fin_stor))
 
                 data_stor = merging_to_date_trajectory(time_meas_full, x_est_stor_full, y_ext_stor_full)
@@ -695,7 +746,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, " SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -721,7 +772,7 @@ def process_measurements(data, config):
                 theta_meas_one_part = theta_meas[:act_start_index - 1]
 
                 theta_smoother_one_part = rts_angle_smoother(time_meas_one_part, theta_meas_one_part, sigma_theta=0.4,
-                                                             sigma_ksi=1,
+                                                             sigma_ksi=1e-1,
                                                              sigma_n=5e-3)
                 range_smoother_one_part, radial_velocity_smoother_one_part = rts_coord_smoother(time_meas_one_part,
                                                                                                 range_meas_one_part,
@@ -729,7 +780,7 @@ def process_measurements(data, config):
                                                                                                 sigma_coord=-40,
                                                                                                 sigma_ksi=1e1,
                                                                                                 sigma_n1=0.1e1,
-                                                                                                sigma_n2=0.3e0)
+                                                                                                sigma_n2=0.03e0)
 
                 time_meas_full_one_part, range_meas_full_one_part, radial_velocity_meas_full_one_part, theta_meas_full_one_part = time_step_filling_data(
                     time_meas_one_part, range_smoother_one_part, radial_velocity_smoother_one_part,
@@ -787,12 +838,13 @@ def process_measurements(data, config):
                 x_est_init_one_part = [0, velocity_x_set_control_one_part[0], as_x_set_control_one_part[0], 0,
                                        velocity_h_set_control_one_part[0], as_h_set_control_one_part[0], 0, 0, 0]
 
-                x_est_stor_one_part, y_ext_stor_one_part, time_meas_stor_one_part = trajectory_points_approximation(
+                x_est_stor_one_part, y_ext_stor_one_part, cx_est_stor_one_part, time_meas_stor_one_part = trajectory_points_approximation(
                     y_meas_set_one_part,
                     x_est_init_one_part,
                     time_meas_full_one_part,
                     config.loc_X,
                     config.loc_Y, config.loc_Z,
+                    config.can_H,
                     time_meas_control_one_part,
                     x_set_control_one_part,
                     h_set_control_one_part,
@@ -809,7 +861,7 @@ def process_measurements(data, config):
                 theta_meas_two_part = theta_meas[act_end_index:]
 
                 theta_smoother_two_part = rts_angle_smoother(time_meas_two_part, theta_meas_two_part, sigma_theta=0.4,
-                                                             sigma_ksi=1,
+                                                             sigma_ksi=1e-1,
                                                              sigma_n=5e-3)
                 range_smoother_two_part, radial_velocity_smoother_two_part = rts_coord_smoother(time_meas_two_part,
                                                                                                 range_meas_two_part,
@@ -863,23 +915,24 @@ def process_measurements(data, config):
                                        h_set_control_two_part[0],
                                        velocity_h_set_control_two_part[0], as_h_set_control_two_part[0], 0, 0, 0]
 
-                x_est_stor_two_part, y_ext_stor_two_part, time_meas_stor_two_part = trajectory_points_approximation_act_react(
+                x_est_stor_two_part, y_ext_stor_two_part, cx_est_stor_two_part, time_meas_stor_two_part = trajectory_points_approximation_act_react(
                     y_meas_set_two_part,
                     x_est_init_two_part,
                     config.loc_X,
-                    config.loc_Y, config.loc_Z,
+                    config.loc_Y, config.loc_Z, config.can_H,
                     time_meas_control_two_part,
                     as_x_set_control_two_part,
                     as_h_set_control_two_part)
 
-                x_est_stor_active, y_ext_stor_active, time_meas_active = active_reactive(time_meas_full_one_part,
-                                                                                         time_meas_full_two_part,
-                                                                                         x_est_stor_one_part,
-                                                                                         x_est_stor_two_part,
-                                                                                         i_f_estimation, config.can_H,
-                                                                                         config.m, config.r,
-                                                                                         config.loc_X,
-                                                                                         config.loc_Y, config.loc_Z)
+                x_est_stor_active, y_ext_stor_active, cx_est_active, time_meas_active = active_reactive(
+                    time_meas_full_one_part,
+                    time_meas_full_two_part,
+                    x_est_stor_one_part,
+                    x_est_stor_two_part,
+                    i_f_estimation, config.can_H,
+                    config.m, config.r,
+                    config.loc_X,
+                    config.loc_Y, config.loc_Z)
 
                 x_est_init_two_part_active = [x_est_stor_active[-1, 0], x_est_stor_active[-1, 1],
                                               x_est_stor_active[-1, 2],
@@ -888,16 +941,16 @@ def process_measurements(data, config):
                                               x_est_stor_active[-1, 6], x_est_stor_active[-1, 7],
                                               x_est_stor_active[-1, 8]]
 
-                x_est_stor_two_part_active, y_ext_stor_two_part_active, time_meas_stor_two_part_active = trajectory_points_approximation_act_react(
+                x_est_stor_two_part_active, y_ext_stor_two_part_active, cx_est_stor_two_part_active, time_meas_stor_two_part_active = trajectory_points_approximation_act_react(
                     y_meas_set_two_part,
                     x_est_init_two_part_active, config.loc_X,
-                    config.loc_Y, config.loc_Z,
+                    config.loc_Y, config.loc_Z, config.can_H,
                     time_meas_control_two_part,
                     as_x_set_control_two_part,
                     as_h_set_control_two_part)
 
-                x_est_fin_stor, y_ext_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
-                    x_est_stor_two_part_active,
+                x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
+                    x_est_stor_two_part_active, cx_est_stor_two_part_active,
                     time_meas_stor_two_part_active,
                     i_f_estimation,
                     config.r, config.m,
@@ -914,7 +967,11 @@ def process_measurements(data, config):
                     np.concatenate((theta_smoother_one_part, theta_smoother_two_part)))
 
                 x_est_stor_full = np.concatenate(
-                    (x_est_stor_one_part, x_est_stor_active, x_est_stor_two_part_active, x_est_fin_stor))
+                    (np.column_stack((x_est_stor_one_part, cx_est_stor_one_part)),
+                     np.column_stack((x_est_stor_active, cx_est_active)),
+                     np.column_stack((x_est_stor_two_part_active, cx_est_stor_two_part_active)),
+                     np.column_stack((x_est_fin_stor, cx_est_fin_stor))))
+
                 y_ext_stor_full = np.concatenate(
                     (y_ext_stor_one_part, y_ext_stor_active, y_ext_stor_two_part_active, y_ext_fin_stor))
                 time_meas_full = np.concatenate(
@@ -937,7 +994,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, " SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -955,11 +1012,13 @@ def process_measurements(data, config):
                 K1 = 0.00469403894621853
                 K2 = -1.48037192545477e-07
 
-                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=0.1, sigma_n=5e-3)
+                theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e-1,
+                                                    sigma_n=5e-3)
                 range_smoother, radial_velocity_smoother = rts_coord_smoother(time_meas, range_meas,
                                                                               radial_velocity_meas, sigma_coord=-40,
-                                                                              sigma_ksi=10, sigma_n1=1,
-                                                                              sigma_n2=0.3)
+                                                                              sigma_ksi=1e1,
+                                                                              sigma_n1=0.1e1,
+                                                                              sigma_n2=0.03e0)
 
                 time_meas_full, range_meas_full, radial_velocity_meas_full, theta_meas_full = time_step_filling_data(
                     time_meas, range_smoother, radial_velocity_smoother, theta_smoother)
@@ -1007,31 +1066,38 @@ def process_measurements(data, config):
                 x_est_init = [0, velocity_x_set_control[0], as_x_set_control[0], 0,
                               velocity_h_set_control[0], as_h_set_control[0], 0, 0, 0]
 
-                x_est_stor, y_ext_stor, time_meas_stor = trajectory_points_approximation(y_meas_set, x_est_init,
-                                                                                         time_meas_full, config.loc_X,
-                                                                                         config.loc_Y, config.loc_Z,
-                                                                                         time_meas_control,
-                                                                                         x_set_control, h_set_control,
-                                                                                         velocity_x_set_control,
-                                                                                         velocity_h_set_control,
-                                                                                         as_x_set_control,
-                                                                                         as_h_set_control)
+                x_est_stor, y_ext_stor, cx_est_stor, time_meas_stor = trajectory_points_approximation(y_meas_set,
+                                                                                                      x_est_init,
+                                                                                                      time_meas_full,
+                                                                                                      config.loc_X,
+                                                                                                      config.loc_Y,
+                                                                                                      config.loc_Z,
+                                                                                                      config.can_H,
+                                                                                                      time_meas_control,
+                                                                                                      x_set_control,
+                                                                                                      h_set_control,
+                                                                                                      velocity_x_set_control,
+                                                                                                      velocity_h_set_control,
+                                                                                                      as_x_set_control,
+                                                                                                      as_h_set_control)
 
-                x_est_fin_stor, y_ext_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(x_est_stor,
-                                                                                                 time_meas_stor,
-                                                                                                 i_f_estimation,
-                                                                                                 config.r, config.m,
-                                                                                                 config.loc_X,
-                                                                                                 config.loc_Y,
-                                                                                                 config.loc_Z,
-                                                                                                 config.can_H)
+                x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
+                    x_est_stor, cx_est_stor,
+                    time_meas_stor,
+                    i_f_estimation,
+                    config.r, config.m,
+                    config.loc_X,
+                    config.loc_Y,
+                    config.loc_Z,
+                    config.can_H)
 
                 sko_range, sko_radial_velocity, sko_theta = sko_error_meas(y_ext_stor, time_meas_stor, time_meas,
                                                                            range_smoother, radial_velocity_smoother,
                                                                            theta_smoother)
 
                 time_meas_full = np.concatenate((time_meas_stor, time_meas_fin_stor))
-                x_est_stor_full = np.concatenate((x_est_stor, x_est_fin_stor))
+                x_est_stor_full = np.concatenate(
+                    (np.column_stack((x_est_stor, cx_est_stor)), np.column_stack((x_est_fin_stor, cx_est_fin_stor))))
                 y_ext_stor_full = np.concatenate((y_ext_stor, y_ext_fin_stor))
 
                 data_stor = merging_to_date_trajectory(time_meas_full, x_est_stor_full, y_ext_stor_full)
@@ -1051,7 +1117,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, " SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
                          "valid": True}
 
                 config.data_points = 1

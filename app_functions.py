@@ -26,6 +26,7 @@ def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor
     :return: x_est_stor_active: ndarray
              y_ext_stor_active: ndarray
              time_meas: ndarray
+             cx_set_active: ndarray
     '''
 
     data_43gost = pd.read_csv('43gost.csv')
@@ -68,11 +69,13 @@ def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor
     as_x_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
     as_h_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
     p_sum = np.zeros((length_b_y, length_i_l, length_mu_p))
+    cx_set_active = np.zeros((length_b_y, length_i_l, length_mu_p))
 
     for i in range(length_b_y):
         for j in range(length_i_l):
             velocity_set_active[i, j, 0] = np.sqrt(x_est_stor_one_part[-1, 1] ** 2 + x_est_stor_one_part[-1, 4] ** 2)
             alpha_set_active[i, j, 0] = np.arctan(x_est_stor_one_part[-1, 4] / x_est_stor_one_part[-1, 1])
+            # alpha
             velocity_x_set_active[i, j, 0] = x_est_stor_one_part[-1, 1]
             velocity_h_set_active[i, j, 0] = x_est_stor_one_part[-1, 4]
             x_set_active[i, j, 0] = x_est_stor_one_part[-1, 0]
@@ -86,6 +89,7 @@ def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor
                 h_set_active[i, j, 0] + cannon_h)
             cx_int_tab = interpolate.interp1d(machs, ballistic_coefficient)(
                 velocity_set_active[i, j, 0] / velocity_sound_gost)
+            cx_set_active[i, j, 0] = cx_int_tab
 
             m_ost[i, j, 0] = m
             as_set_active[i, j, 0] = (rho_gost * (np.pi * r ** 2 / 4) * (
@@ -108,6 +112,7 @@ def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor
                     h_set_active[i, j, k - 1] + cannon_h)
                 cx_int_tab = interpolate.interp1d(machs, ballistic_coefficient)(
                     velocity_set_active[i, j, k - 1] / velocity_sound_gost)
+                cx_set_active[i, j, k] = cx_int_tab
                 pi_y = interpolate.interp1d(data_43gost.height, data_43gost.pi)(h_set_active[i, j, k - 1])
 
                 m_ost[i, j, k] = m_ost[i, j, k - 1] - mu_p[k] * time_step
@@ -144,6 +149,7 @@ def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor
     velocity_h_set_active = velocity_h_set_active[row, col, :].reshape(len(time_meas))
     as_x_set_active = as_x_set_active[row, col, :].reshape(len(time_meas))
     as_h_set_active = as_h_set_active[row, col, :].reshape(len(time_meas))
+    cx_set_active = cx_set_active[row, col, :].reshape(len(time_meas))
 
     y_set_active = np.zeros(len(time_meas))
     y_set_active[...] = x_est_stor_one_part[-1, 6]
@@ -168,7 +174,7 @@ def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor
             (x_est_stor_active[:, 0] - x_l) ** 2 + (x_est_stor_active[:, 6] - y_l) ** 2 + (
                     x_est_stor_active[:, 3] - h_l) ** 2))])
 
-    return x_est_stor_active, y_ext_stor_active.T, time_meas
+    return x_est_stor_active, y_ext_stor_active.T, cx_set_active, time_meas
 
 
 def emissions_theta(theta_meas, thres_theta=0.015):
@@ -782,7 +788,6 @@ def structuring_approximate_values(time_meas_start, x_set_0, h_set_0, velocity_x
                 - as_set - acc_gravity_gost * np.sin(alpha_set[i - 1])) * time_step
         alpha_set[i] = alpha_set[i - 1] + (
                 - acc_gravity_gost * np.cos(alpha_set[i - 1]) / velocity_set[i - 1]) * time_step
-
         x_set[i] = x_set[i - 1] + velocity_x_set[i - 1] * time_step
         h_set[i] = h_set[i - 1] + velocity_h_set[i - 1] * time_step
         velocity_x_set[i] = velocity_set[i] * np.cos(alpha_set[i])
@@ -795,7 +800,6 @@ def structuring_approximate_values(time_meas_start, x_set_0, h_set_0, velocity_x
             h_set[i] + cannon_h)
         cx_int = interpolate.interp1d(machs, ballistic_coefficient)(
             velocity_set[i] / velocity_sound_gost)
-
         as_set = (rho_gost * (np.pi * r ** 2 / 4) * (
                 velocity_set[i] ** 2 / 2) * cx_int * i_f_estimation) / m
         as_x_set[i] = - as_set * np.cos(alpha_set[i])
@@ -809,7 +813,7 @@ def structuring_approximate_values(time_meas_start, x_set_0, h_set_0, velocity_x
     return time_meas, x_set, h_set, velocity_x_set, velocity_h_set, as_x_set, as_h_set
 
 
-def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l, y_l, h_l, time_meas, x_set,
+def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l, y_l, h_l, cannon_h, time_meas, x_set,
                                     h_set, velocity_x_set, velocity_h_set, as_x_set, as_h_set,
                                     sigma_ksi_x=0.05, sigma_ksi_h=0.05, sigma_ksi_y=0.001, sigma_n_R=1, sigma_n_Vr=1,
                                     sigma_n_theta=np.deg2rad(0.5), sigma_n_y=0.1, sigma_n_Ax=0.5, sigma_n_Ah=0.5,
@@ -822,6 +826,7 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
     :param x_l: float
     :param y_l: float
     :param h_l: float
+    :param cannon_h: float
     :param time_meas: ndarray
     :param x_set: ndarray
     :param h_set: ndarray
@@ -840,9 +845,13 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
     :param sigma_n_Ah: float
     :param time_step: float
     :return: x_est_stor: ndarray
-             y_est_stor: ndarray
+             y_ext_stor: ndarray
+             cx_est_stor: ndarray
              time_meas: ndarray
     '''
+
+    data_43gost = pd.read_csv('43gost.csv')
+    ballictic_coefficient, machs = ballistic_coefficient_43gost()
 
     x_est_prev = x_est_init
     Dx_est_prev = np.eye(9)
@@ -983,13 +992,17 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
             y_ext_stor.append(y_ext_init)
 
     x_est_stor = np.array(x_est_stor)
+    velocity_sound_gost = interpolate.interp1d(data_43gost.height, data_43gost.a)(x_est_stor[:, 3] + cannon_h)
+    velosity_est_stor = np.sqrt(x_est_stor[:, 1] ** 2 + x_est_stor[:, 4] ** 2)
+    cx_est_stor = interpolate.interp1d(machs, ballictic_coefficient)(velosity_est_stor / velocity_sound_gost)
+
     y_ext_stor = np.array(y_ext_stor)
     y_ext_stor = y_ext_stor[:, :3]
 
-    return x_est_stor, y_ext_stor, time_meas
+    return x_est_stor, y_ext_stor, cx_est_stor, time_meas
 
 
-def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, h_l, time_meas, as_x_set, as_h_set,
+def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, h_l, cannon_h, time_meas, as_x_set, as_h_set,
                                               sigma_ksi_x=0.05, sigma_ksi_h=0.05, sigma_ksi_y=0.001, sigma_n_R=4,
                                               sigma_n_Vr=1,
                                               sigma_n_theta=np.deg2rad(1), sigma_n_y=0.1, sigma_n_Ax=0.5,
@@ -1002,6 +1015,7 @@ def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, 
     :param x_l: float
     :param y_l: float
     :param h_l: float
+    :param cannon_h: float
     :param time_meas: ndarray
     :param as_x_set: ndarray
     :param as_h_set: ndarray
@@ -1016,9 +1030,13 @@ def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, 
     :param sigma_n_Ah: float
     :param time_step: float
     :return: x_est_stor: ndarray
-             y_est_stor: ndarray
+             y_ext_stor: ndarray
+             cx_est_stor: ndarray
              time_meas: ndarray
     '''
+
+    data_43gost = pd.read_csv('43gost.csv')
+    ballictic_coefficient, machs = ballistic_coefficient_43gost()
 
     x_est_prev = x_est_init
     Dx_est_prev = np.eye(9)
@@ -1152,15 +1170,20 @@ def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, 
         x_est_stor.append(x_est_prev)
 
     x_est_stor = np.array(x_est_stor)
+    velocity_sound_gost = interpolate.interp1d(data_43gost.height, data_43gost.a)(x_est_stor[:, 3] + cannon_h)
+    velosity_est_stor = np.sqrt(x_est_stor[:, 1] ** 2 + x_est_stor[:, 4] ** 2)
+    cx_est_stor = interpolate.interp1d(machs, ballictic_coefficient)(velosity_est_stor / velocity_sound_gost)
+
     y_ext_stor = np.array(y_ext_stor)
     y_ext_stor = y_ext_stor[:, :3]
 
-    return x_est_stor, y_ext_stor, time_meas
+    return x_est_stor, y_ext_stor, cx_est_stor, time_meas
 
 
-def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l, y_l, h_l, cannon_h, time_step=0.05):
+def extrapolation_to_point_fall(x_est_stor, cx_est_stor, time_meas, i_f_estimation, r, m, x_l, y_l, h_l, cannon_h, time_step=0.05):
     '''
     extrapolation of the trajectory to the point of fall
+    :param cx_est_stor: ndarray
     :param h_l: float
     :param y_l: float
     :param x_l: float
@@ -1173,6 +1196,7 @@ def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l
     :param time_step: float
     :return: x_est_fin_stor: ndarray
              y_ext_fin_stor: ndarray
+             cx_est_fin_stor: ndarray
              time_meas_fin_stor: ndarray
     '''
 
@@ -1180,10 +1204,14 @@ def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l
 
     x_est_fin_stor = []
     time_meas_fin_stor = []
+    cx_est_fin_stor = []
 
     x_est_prev = x_est_stor[-1]
+    cx_est_prev = cx_est_stor[-1]
 
     x_est_fin_stor.append(x_est_prev)
+    cx_est_fin_stor.append(cx_est_prev)
+
     time_meas_fin_stor.append(time_meas[-1])
 
     ballistic_coefficient, machs = ballistic_coefficient_43gost()
@@ -1236,9 +1264,11 @@ def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l
         x_ext[5] = x_est_prev[5] + (as_h_cur - as_h_cur_prev)
 
         x_est_fin_stor.append(x_ext)
+        cx_est_fin_stor.append(cx_int_prev)
         x_est_prev = x_ext
 
     x_est_fin_stor = np.array(x_est_fin_stor)
+    cx_est_fin_stor = np.array(cx_est_fin_stor)
     y_ext_init_stor = np.array([np.sqrt(
         (x_est_fin_stor[:, 0] - x_l) ** 2 + (x_est_fin_stor[:, 6] - y_l) ** 2 + (x_est_fin_stor[:, 3] - h_l) ** 2),
         (x_est_fin_stor[:, 1] * (x_est_fin_stor[:, 0] - x_l) + x_est_fin_stor[:, 4] * (
@@ -1254,7 +1284,7 @@ def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l
     y_ext_init_stor = y_ext_init_stor.T
     y_ext_init_stor = y_ext_init_stor[:, :3]
 
-    return x_est_fin_stor, y_ext_init_stor, np.array(time_meas_fin_stor)
+    return x_est_fin_stor, y_ext_init_stor, cx_est_fin_stor, np.array(time_meas_fin_stor)
 
 
 def merging_to_date_trajectory(time_meas_stor, x_est_stor, y_ext_stor):
@@ -1264,13 +1294,12 @@ def merging_to_date_trajectory(time_meas_stor, x_est_stor, y_ext_stor):
     :param y_ext_stor: ndarray
     :return: data_stor: DataFrame
     '''
-    data_stor_x = pd.DataFrame(data=x_est_stor[:-1], columns=['x', 'Vx', 'Ax', 'y', 'Vy', 'Ay', 'z', 'Vz', 'Az'])
-    data_stor_x.insert(0, 't', time_meas_stor[:-1])
-    data_stor_y = pd.DataFrame(data=y_ext_stor[:-1], columns=['R', 'Vr', 'theta'])
+    data_stor_x = pd.DataFrame(data=x_est_stor, columns=['x', 'Vx', 'Ax', 'y', 'Vy', 'Ay', 'z', 'Vz', 'Az', 'C'])
+    data_stor_x.insert(0, 't', time_meas_stor)
+    data_stor_y = pd.DataFrame(data=y_ext_stor, columns=['DistanceR', 'VrR', 'EvR'])
     data_stor = pd.concat([data_stor_x, data_stor_y], axis=1)
 
     return data_stor
-
 
 def ballistic_coefficient_43gost():
     '''
