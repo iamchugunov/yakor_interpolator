@@ -232,7 +232,7 @@ def process_measurements(data, config):
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz),
                          "Vd": x_fall * np.sin(3 * sko_theta_tz),
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -358,7 +358,7 @@ def process_measurements(data, config):
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz),
                          "Vd": x_fall * np.sin(3 * sko_theta_tz),
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -479,7 +479,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -621,7 +621,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -746,7 +746,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -994,7 +994,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -1117,7 +1117,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
