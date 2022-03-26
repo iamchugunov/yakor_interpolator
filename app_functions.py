@@ -158,7 +158,7 @@ def active_reactive(time_meas_full_one_part, time_meas_full_two_part, x_est_stor
 
     y_ext_stor_active = np.array([np.sqrt(
         (x_est_stor_active[:, 0] - x_l) ** 2 + (x_est_stor_active[:, 6] - y_l) ** 2 + (
-                    x_est_stor_active[:, 3] - h_l) ** 2),
+                x_est_stor_active[:, 3] - h_l) ** 2),
         (x_est_stor_active[:, 1] * (x_est_stor_active[:, 0] - x_l) + x_est_stor_active[:, 4] * (
                 x_est_stor_active[:, 3] - h_l) + x_est_stor_active[:, 7] * (
                  x_est_stor_active[:, 6] - y_l)) / np.sqrt(
@@ -809,7 +809,7 @@ def structuring_approximate_values(time_meas_start, x_set_0, h_set_0, velocity_x
     return time_meas, x_set, h_set, velocity_x_set, velocity_h_set, as_x_set, as_h_set
 
 
-def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l, y_l, h_l, time_meas, x_set,
+def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l, y_l, h_l, cannon_h, time_meas, x_set,
                                     h_set, velocity_x_set, velocity_h_set, as_x_set, as_h_set,
                                     sigma_ksi_x=0.05, sigma_ksi_h=0.05, sigma_ksi_y=0.001, sigma_n_R=1, sigma_n_Vr=1,
                                     sigma_n_theta=np.deg2rad(0.5), sigma_n_y=0.1, sigma_n_Ax=0.5, sigma_n_Ah=0.5,
@@ -983,7 +983,7 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
     return np.array(x_est_stor), np.array(y_ext_stor), time_meas
 
 
-def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, h_l, time_meas, as_x_set, as_h_set,
+def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, h_l, cannon_h, time_meas, as_x_set, as_h_set,
                                               sigma_ksi_x=0.05, sigma_ksi_h=0.05, sigma_ksi_y=0.001, sigma_n_R=4,
                                               sigma_n_Vr=1,
                                               sigma_n_theta=np.deg2rad(1), sigma_n_y=0.1, sigma_n_Ax=0.5,
@@ -1147,7 +1147,8 @@ def trajectory_points_approximation_act_react(y_meas_set, x_est_init, x_l, y_l, 
     return np.array(x_est_stor), np.array(y_ext_stor), time_meas
 
 
-def extrapolation_to_point_fall(x_est_stor, time_meas, i_f_estimation, r, m, x_l, y_l, h_l, cannon_h, time_step=0.05):
+def extrapolation_to_point_fall(x_est_stor, cx_est_stor, time_meas, i_f_estimation, r, m, x_l, y_l, h_l, cannon_h,
+                                time_step=0.05):
     '''
     extrapolation of the trajectory to the point of fall
     :param h_l: float
@@ -1249,9 +1250,12 @@ def merging_to_date_trajectory(time_meas_stor, x_est_stor, y_ext_stor):
     :param y_ext_stor: ndarray
     :return: data_stor: DataFrame
     '''
-    data_stor_x = pd.DataFrame(data=x_est_stor[:-1], columns=['x', 'Vx', 'Ax', 'y', 'Vy', 'Ay', 'z', 'Vz', 'Az'])
-    data_stor_x.insert(0, 't', time_meas_stor[:-1])
-    data_stor_y = pd.DataFrame(data=y_ext_stor[:-1], columns=['R', 'Vr', 'theta'])
+    theta_est_stor = np.arctan(x_est_stor[:, 4] / x_est_stor[:, 1])
+    x_est_stor = np.column_stack((x_est_stor, theta_est_stor))
+    data_stor_x = pd.DataFrame(data=x_est_stor,
+                               columns=['x', 'Vx', 'Ax', 'y', 'Vy', 'Ay', 'z', 'Vz', 'Az', 'C', 'theta'])
+    data_stor_x.insert(0, 't', time_meas_stor)
+    data_stor_y = pd.DataFrame(data=y_ext_stor, columns=['DistanceR', 'VrR', 'EvR'])
     data_stor = pd.concat([data_stor_x, data_stor_y], axis=1)
 
     return data_stor
