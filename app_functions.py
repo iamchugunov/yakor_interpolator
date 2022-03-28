@@ -210,21 +210,21 @@ def act_react_partition(time_meas, radial_velocity_meas, time_act_dur=1.7,
         np.diff(radial_velocity_meas) / np.diff(time_meas),
         (radial_velocity_meas[-1] - radial_velocity_meas[-2]) / (time_meas[-1] - time_meas[-2]))
 
-    act_start_index = -1
+    act_start_index = 0
     mean_window_drange_prev = 0
 
     try:
 
         for i in range(len(time_meas) - window_length):
             drange_meas_dtime_window = drange_meas_dtime[i:window_length + i]
-            mean_window_drange_dtime = np.mean(drange_meas_dtime_window)
+            mean_window_drange_dtime = np.max(drange_meas_dtime_window)
             if i > 0 and abs(mean_window_drange_dtime - mean_window_drange_prev) > diff_radial_velocity_drange_dtime:
                 act_start_index = i + window_length
                 break
             mean_window_drange_prev = mean_window_drange_dtime
 
     except NameError:
-        act_start_index = -1
+        act_start_index = 0
 
     times_act_start = time_meas[act_start_index]
     times_act_end_exp = times_act_start + time_act_dur
