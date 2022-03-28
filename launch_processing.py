@@ -764,7 +764,7 @@ def process_measurements(data, config):
                 K1 = 0.00469403894621853
                 K2 = -1.48037192545477e-07
 
-                act_start_index, act_end_index = act_react_partition(time_meas, range_meas, radial_velocity_meas)
+                act_start_index, act_end_index = act_react_partition(time_meas, radial_velocity_meas)
 
                 time_meas_one_part = time_meas[:act_start_index - 1]
                 range_meas_one_part = range_meas[:act_start_index - 1]

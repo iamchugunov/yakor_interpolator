@@ -255,8 +255,6 @@ def act_react_partition(time_meas, radial_velocity_meas, time_act_dur=1.7,
     :return: act_start_index: float
              act_end_index: float
     '''
-    time_meas = time_meas[::-1]
-    radial_velocity_meas = radial_velocity_meas[::-1]
 
     drange_meas_dtime = np.append(
         np.diff(radial_velocity_meas) / np.diff(time_meas),
@@ -1382,9 +1380,9 @@ def merging_to_date_trajectory(time_meas_stor, x_est_stor, y_ext_stor):
     :param y_ext_stor: ndarray
     :return: data_stor: DataFrame
     '''
-    theta_est_stor = np.arctan(x_est_stor[:, 4], x_est_stor[:, 1])
-    x_est_stor = np.column_stack((x_est_stor, theta_est_stor))
-    data_stor_x = pd.DataFrame(data=x_est_stor,
+    theta_est_stor = np.arctan(x_est_stor[:, 4] / x_est_stor[:, 1])
+    x_est_stor_full = np.column_stack((x_est_stor, np.rad2deg(theta_est_stor)))
+    data_stor_x = pd.DataFrame(data=x_est_stor_full,
                                columns=['x', 'Vx', 'Ax', 'y', 'Vy', 'Ay', 'z', 'Vz', 'Az', 'C', 'theta'])
     data_stor_x.insert(0, 't', time_meas_stor)
     data_stor_y = pd.DataFrame(data=y_ext_stor, columns=['DistanceR', 'VrR', 'EvR'])
