@@ -193,56 +193,6 @@ def emissions_theta(theta_meas, thres_theta=0.015):
     return bad_ind
 
 
-# def act_react_partition(time_meas, range_meas, radial_velocity_meas, time_act_dur=1.7,
-#                         diff_radial_velocity_drange_dtime=70, window_length=10):
-#     '''
-#     partitioning of active-reactive
-#     :param window_length: int
-#     :param diff_radial_velocity_drange_dtime: int
-#     :param time_meas: ndarray
-#     :param range_meas: ndarray
-#     :param radial_velocity_meas: ndarray
-#     :param time_act_dur: float
-#     :return: act_start_index: float
-#              act_end_index: float
-#     '''
-#     time_meas = time_meas[::-1]
-#     range_meas = range_meas[::-1]
-#     radial_velocity_meas = radial_velocity_meas[::-1]
-#
-#     drange_meas_dtime = np.append(
-#         np.diff(range_meas) / np.diff(time_meas),
-#         (range_meas[-1] - range_meas[-2]) / (time_meas[-1] - time_meas[-2]))
-#
-#     act_end_index = -1
-#
-#     try:
-#
-#         for i in range(len(time_meas) - window_length):
-#             radial_velocity_window = radial_velocity_meas[i:window_length + i]
-#             drange_meas_dtime_window = drange_meas_dtime[i:window_length + i]
-#             mean_window_radial_velocity = np.mean(radial_velocity_window)
-#             mean_window_drange_dtime = np.mean(drange_meas_dtime_window)
-#
-#             if abs(mean_window_radial_velocity - mean_window_drange_dtime) > diff_radial_velocity_drange_dtime:
-#                 act_end_index = i + window_length
-#                 break
-#
-#     except NameError:
-#         act_end_index = -1
-#
-#     act_end_index = len(time_meas) - act_end_index
-#
-#     time_meas = time_meas[::-1]
-#     times_act_end = time_meas[act_end_index]
-#     times_act_start_exp = times_act_end - time_act_dur
-#
-#     act_start_index, times_act_start_value = min(enumerate(
-#         abs(time_meas[:act_end_index] - times_act_start_exp)
-#     ), key=lambda x: x[1])
-#
-#     return act_start_index, act_end_index
-
 def act_react_partition(time_meas, radial_velocity_meas, time_act_dur=1.7,
                         diff_radial_velocity_drange_dtime=30, window_length=5):
     '''
@@ -284,48 +234,6 @@ def act_react_partition(time_meas, radial_velocity_meas, time_act_dur=1.7,
     ), key=lambda x: x[1])
 
     return act_start_index, act_end_index
-
-
-# partitioning to active-reactive  - type_bullet = 6
-def func_active_reactive(t_meas, R_meas, Vr_meas):
-    Thres_dRdt = 3000
-    Thres_dVrdt = 200
-
-    dRdt_set = np.diff(R_meas) / np.diff(t_meas)
-    dVrdt_set = np.diff(Vr_meas) / np.diff(t_meas)
-
-    flag = 0
-    outliers_counter = 0
-
-    t_ind_end_1part = 0
-    t_ind_start_2part = 0
-
-    for k in range(len(t_meas) - 1):
-
-        dRdt = dRdt_set[k]
-        dVrdt = dVrdt_set[k]
-
-        if (np.abs(dVrdt) > Thres_dVrdt) and (flag == 0):
-            flag = 1
-            t_ind_end_1part = k
-            outliers_counter += 1
-
-        if np.abs(dRdt) > Thres_dRdt:
-            t_ind_start_2part = k + 1
-
-        if outliers_counter == 1:
-            t_ind_start_2part = t_ind_end_1part + 1
-
-    if t_ind_end_1part == 0 or t_ind_start_2part == 0:
-        for i in range(len(t_meas) - 1):
-            if t_meas[i + 1] - t_meas[i] > 1:
-                t_ind_end = t_meas[i]
-                t_ind_start = t_meas[i + 1]
-
-                t_ind_end_1part = list(t_meas).index(t_ind_end) + 1
-                t_ind_start_2part = list(t_meas).index(t_ind_start)
-
-    return t_ind_end_1part, t_ind_start_2part
 
 
 def rts_angle_smoother(time_meas, theta_meas, sigma_theta, sigma_ksi, sigma_n):
