@@ -1293,6 +1293,8 @@ def merging_to_date_trajectory(time_meas_stor, x_est_stor, y_ext_stor):
     data_stor_x = pd.DataFrame(data=x_est_stor_full,
                                columns=['x', 'Vx', 'Ax', 'y', 'Vy', 'Ay', 'z', 'Vz', 'Az', 'C', 'theta'])
     data_stor_x.insert(0, 't', time_meas_stor)
+    # theta - градусы
+    # evr - градусы
     data_stor_y = pd.DataFrame(data=y_ext_stor, columns=['DistanceR', 'VrR', 'EvR'])
     data_stor = pd.concat([data_stor_x, data_stor_y], axis=1)
 

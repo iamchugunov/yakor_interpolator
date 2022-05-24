@@ -100,7 +100,9 @@ def process_measurements(data, config):
             for i, point in enumerate(data["points"]):
                 time_meas[i] = point["execTime"]
                 range_meas[i] = point["R"]
-                radial_velocity_meas[i] = abs(point["Vr"])
+                #radial_velocity_meas[i] = abs(point["Vr"])
+
+                radial_velocity_meas[i] = -(point["Vr"])
                 theta_meas[i] = np.deg2rad(point["Epsilon"])
 
             # SKO measurement
