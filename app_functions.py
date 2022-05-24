@@ -810,6 +810,7 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
                                     sigma_ksi_x=0.05, sigma_ksi_h=0.05, sigma_ksi_y=0.001, sigma_n_R=1, sigma_n_Vr=1,
                                     sigma_n_theta=np.deg2rad(0.5), sigma_n_y=0.1, sigma_n_Ax=0.5, sigma_n_Ah=0.5,
                                     time_step=0.05):
+
     '''
     trajectory points for measurements
     :param y_meas_set: list

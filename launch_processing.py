@@ -100,7 +100,7 @@ def process_measurements(data, config):
             for i, point in enumerate(data["points"]):
                 time_meas[i] = point["execTime"]
                 range_meas[i] = point["R"]
-                #radial_velocity_meas[i] = abs(point["Vr"])
+                # radial_velocity_meas[i] = abs(point["Vr"])
 
                 radial_velocity_meas[i] = -(point["Vr"])
                 theta_meas[i] = np.deg2rad(point["Epsilon"])
@@ -709,7 +709,10 @@ def process_measurements(data, config):
                                                                                                       velocity_x_set_control,
                                                                                                       velocity_h_set_control,
                                                                                                       as_x_set_control,
-                                                                                                      as_h_set_control)
+                                                                                                      as_h_set_control,
+                                                                                                      sigma_n_R=30,
+                                                                                                      sigma_n_theta=np.deg2rad(
+                                                                                                          5))
 
                 x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
                     x_est_stor,
