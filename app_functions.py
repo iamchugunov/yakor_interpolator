@@ -483,6 +483,69 @@ def lsm_processing_window_rh(time_meas, range_meas, radial_velocity_meas, theta_
     return x_estimation
 
 
+def lsm_processing_window_rh_new(time_meas, range_x_apr, range_h_apr, radial_velocity_x_apr,
+                                 radial_velocity_h_apr, sigma_n_range=2, sigma_n_range_velocity=1):
+    '''
+    window approximation
+    :param time_meas: ndarray
+    :param range_x_apr: ndarray
+    :param range_h_apr: ndarray
+    :param radial_velocity_x_apr: ndarray
+    :param radial_velocity_h_apr: ndarray
+    :param sigma_n_range: int
+    :param sigma_n_range_velocity: int
+    :return: x_estimation: ndarray
+    '''
+
+    length = len(time_meas)
+
+    dn_1_3 = sigma_n_range ** 2 * np.eye(length)
+    dn_2_4 = sigma_n_range_velocity ** 2 * np.eye(length)
+
+    zero_matrix = np.zeros((length, length))
+
+    dn = np.concatenate(
+        [np.concatenate([dn_1_3, zero_matrix, zero_matrix, zero_matrix]),
+         np.concatenate([zero_matrix, dn_2_4, zero_matrix, zero_matrix]),
+         np.concatenate([zero_matrix, zero_matrix, dn_1_3, zero_matrix]),
+         np.concatenate([zero_matrix, zero_matrix, zero_matrix, dn_2_4])], axis=1
+    )
+
+    z_matrix = np.concatenate([
+        range_x_apr.T,
+        radial_velocity_x_apr.T,
+        range_h_apr.T,
+        radial_velocity_h_apr.T
+    ])
+    z_matrix = z_matrix.reshape(20, 1)
+
+    tau = np.zeros(length)
+    f_range_x = np.zeros((length, 6))
+    f_radial_velocity_x = np.zeros((length, 6))
+    f_range_h = np.zeros((length, 6))
+    f_radial_velocity_h = np.zeros((length, 6))
+
+    for i, time in enumerate(time_meas):
+        tau[i] = - (time_meas[-1] - time)
+        f_range_x[i, :] = [1, tau[i], tau[i] ** 2 / 2, 0, 0, 0]
+        f_radial_velocity_x[i, :] = [0, 1, tau[i], 0, 0, 0]
+        f_range_h[i, :] = [0, 0, 0, 1, tau[i], tau[i] ** 2 / 2]
+        f_radial_velocity_h[i, :] = [0, 0, 0, 0, 1, tau[i]]
+
+    f_matrix = np.concatenate([
+        f_range_x,
+        f_radial_velocity_x,
+        f_range_h,
+        f_radial_velocity_h
+    ])
+
+    x_estimation = np.linalg.inv(f_matrix.T.dot(np.linalg.inv(dn)).dot(f_matrix)).dot(f_matrix.T).dot(
+        np.linalg.inv(dn)).dot(
+        z_matrix)
+
+    return x_estimation
+
+
 def formation_estimation_on_alpha(time_meas, range_meas, radial_velocity_meas, theta_meas, x_l, y_l, h_l):
     '''
     estimation alpha
@@ -527,6 +590,131 @@ def formation_estimation_on_alpha(time_meas, range_meas, radial_velocity_meas, t
 
         x_estimation_init = f_shift_2_start.dot(x_estimation_tmp)
         x_estimation_stor[i] = x_estimation_init.reshape(6)
+
+    return x_estimation_stor
+
+
+def formation_estimation_on_alpha_mina(time_meas, range_meas, radial_velocity_meas, theta_meas, x_l, y_l, h_l):
+    '''
+    estimation alpha
+    :param time_meas: ndarray
+    :param range_meas: ndarray
+    :param radial_velocity_meas: ndarray
+    :param theta_meas: ndarray
+    :param x_l: float
+    :param y_l: float
+    :param h_l: float
+    :return: x_estimation: ndarray
+    '''
+
+    estimation_int = np.array([0, 1, 2, 3, 4])
+
+    alpha_test = np.arctan(
+        np.diff(range_meas * np.sin(theta_meas)) / np.diff(range_meas * np.cos(theta_meas)))
+    alpha_test = np.append(alpha_test, alpha_test[-1])
+    alpha_meas = rts_angle_smoother(time_meas, alpha_test, sigma_theta=0.4, sigma_ksi=1e-2,
+                                    sigma_n=5e-3)
+
+    range_h_apr, range_x_apr, radial_velocity_x_apr, radial_velocity_h_apr = velocity_aprox(range_meas,
+                                                                                            radial_velocity_meas,
+                                                                                            theta_meas, alpha_meas, x_l,
+                                                                                            y_l,
+                                                                                            h_l)
+
+    flag_cos_min = 0
+    cos_min_thres = 0.25
+    i_time_cos_min = []
+
+    for i in range(len(time_meas)):
+        if abs(np.cos(theta_meas[i] - alpha_meas[i])) < cos_min_thres:
+            i_time_cos_min.append(i)
+            flag_cos_min = 1
+
+    time_meas_for_apr_ind = np.concatenate(
+        [i_time_cos_min[0] - np.array([5, 4, 3, 2, 1]), i_time_cos_min[-1] + np.array([1, 2, 3, 4, 5])])
+    time_meas_for_apr = time_meas[time_meas_for_apr_ind]
+    time_meas_after_apr = time_meas[time_meas_for_apr_ind[0]:time_meas_for_apr_ind[-1] + 1]
+
+    range_h_l_for_apr_test = range_meas[time_meas_for_apr_ind] * np.sin(theta_meas[time_meas_for_apr_ind])
+    range_x_l_for_apr_test = np.sqrt(range_meas[time_meas_for_apr_ind] ** 2 - range_h_l_for_apr_test ** 2)
+
+    radial_velocity_x_for_apr_test = (radial_velocity_meas[time_meas_for_apr_ind] / np.cos(
+        theta_meas[time_meas_for_apr_ind] - alpha_meas[time_meas_for_apr_ind])) * np.cos(
+        alpha_meas[time_meas_for_apr_ind])
+    radial_velocity_h_for_apr_test = (radial_velocity_meas[time_meas_for_apr_ind] * range_meas[
+        time_meas_for_apr_ind] - range_x_l_for_apr_test * radial_velocity_x_for_apr_test) / range_h_l_for_apr_test
+
+    out_lsm_radial_velocity_x = lsm_cubic(time_meas_for_apr, radial_velocity_x_for_apr_test)
+    radial_velocity_x_apr_lsm = np.zeros(len(time_meas_after_apr))
+    for i, time in enumerate(time_meas_after_apr):
+        radial_velocity_x_apr_lsm[i] = (out_lsm_radial_velocity_x[0] + time * out_lsm_radial_velocity_x[1] + time ** 2 *
+                                        out_lsm_radial_velocity_x[
+                                            2] + time ** 3 * out_lsm_radial_velocity_x[3])
+
+    out_lsm_velocity_h = lsm_cubic(time_meas_for_apr, radial_velocity_h_for_apr_test)
+    radial_velocity_h_apr_lsm = np.zeros(len(time_meas_after_apr))
+    for i, time in enumerate(time_meas_after_apr):
+        radial_velocity_h_apr_lsm[i] = (
+                    out_lsm_velocity_h[0] + time * out_lsm_velocity_h[1] + time ** 2 * out_lsm_velocity_h[
+                2] + time ** 3 * out_lsm_velocity_h[3])
+
+    radial_velocity_x_apr[i_time_cos_min[0] - 5: i_time_cos_min[-1] + 6] = radial_velocity_x_apr_lsm
+    radial_velocity_h_apr[i_time_cos_min[0] - 5: i_time_cos_min[-1] + 6] = radial_velocity_h_apr_lsm
+
+    length = len(time_meas) - len(estimation_int) + 1
+    x_estimation_stor = np.zeros((length, 6))
+
+    if not flag_cos_min:
+        for i in range(length):
+            estimation_int_i = estimation_int + i
+            range_meas_estimation = range_meas[estimation_int_i]
+            radial_velocity_meas_estimation = radial_velocity_meas[estimation_int_i]
+            theta_meas_estimation = theta_meas[estimation_int_i]
+            time_meas_estimation = time_meas[estimation_int_i]
+            alpha_meas_estimation = alpha_meas[estimation_int_i]
+
+            x_estimation_tmp = lsm_processing_window_rh(time_meas_estimation, range_meas_estimation,
+                                                        radial_velocity_meas_estimation, theta_meas_estimation,
+                                                        alpha_meas_estimation, x_l, y_l, h_l)
+
+            tau_shift_2_start = time_meas_estimation[0] - time_meas_estimation[-1]
+            f_shift_2_start = np.array([
+                [1, tau_shift_2_start, tau_shift_2_start ** 2 / 2, 0, 0, 0],
+                [0, 1, tau_shift_2_start, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 1, tau_shift_2_start, tau_shift_2_start ** 2 / 2],
+                [0, 0, 0, 0, 1, tau_shift_2_start],
+                [0, 0, 0, 0, 0, 1]
+            ])
+
+            x_estimation_init = f_shift_2_start.dot(x_estimation_tmp)
+            x_estimation_stor[i] = x_estimation_init.reshape(6)
+    else:
+
+        for i in range(length):
+            estimation_int_i = estimation_int + i
+            time_meas_estimation = time_meas[estimation_int_i]
+
+            range_h_apr_k = range_h_apr[estimation_int_i]
+            range_x_apr_k = range_x_apr[estimation_int_i]
+            radial_velocity_x_apr_k = radial_velocity_x_apr[estimation_int_i]
+            radial_velocity_h_apr_k = radial_velocity_h_apr[estimation_int_i]
+
+            x_estimation_tmp = lsm_processing_window_rh_new(time_meas_estimation, range_x_apr_k, range_h_apr_k,
+                                                            radial_velocity_x_apr_k, radial_velocity_h_apr_k)
+
+            tau_shift_2_start = time_meas_estimation[0] - time_meas_estimation[-1]
+            f_shift_2_start = np.array([
+                [1, tau_shift_2_start, tau_shift_2_start ** 2 / 2, 0, 0, 0],
+                [0, 1, tau_shift_2_start, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 1, tau_shift_2_start, tau_shift_2_start ** 2 / 2],
+                [0, 0, 0, 0, 1, tau_shift_2_start],
+                [0, 0, 0, 0, 0, 1]
+            ])
+
+            x_estimation_init = f_shift_2_start.dot(x_estimation_tmp)
+            x_estimation_stor[i] = x_estimation_init.reshape(6)
 
     return x_estimation_stor
 
@@ -810,7 +998,6 @@ def trajectory_points_approximation(y_meas_set, x_est_init, time_meas_full, x_l,
                                     sigma_ksi_x=0.05, sigma_ksi_h=0.05, sigma_ksi_y=0.001, sigma_n_R=1, sigma_n_Vr=1,
                                     sigma_n_theta=np.deg2rad(0.5), sigma_n_y=0.1, sigma_n_Ax=0.5, sigma_n_Ah=0.5,
                                     time_step=0.05):
-
     '''
     trajectory points for measurements
     :param y_meas_set: list
@@ -1357,6 +1544,32 @@ def lsm_alpha(time_meas, range_meas, theta_meas):
     alpha_meas = lsm_data(time_meas, alpha_test)
 
     return alpha_meas
+
+
+def velocity_aprox(range_meas, radial_velocity_meas, theta_meas, alpha_meas, x_l, y_l, h_l):
+    '''
+    range and range_velociry aprox
+    :param h_l: float
+    :param y_l: float
+    :param x_l: float
+    :param range_meas: ndarray
+    :param radial_velocity_meas: ndarray
+    :param theta_meas: ndarray
+    :param alpha_meas: ndarray
+    :return: range_h_apr,
+             range_x_apr,
+             velocity_x_apr,
+             velocity_h_apr
+    '''
+
+    range_h_apr = range_meas * np.sin(theta_meas) + h_l
+    range_x_apr = np.sqrt((range_meas * np.cos(theta_meas)) ** 2 - y_l ** 2) + x_l
+    range_h_l = range_meas * np.sin(theta_meas)
+    range_x_l = np.sqrt(range_meas ** 2 - range_h_l ** 2)
+    velocity_x_apr = (radial_velocity_meas / np.cos(theta_meas - alpha_meas)) * np.cos(alpha_meas)
+    velocity_h_apr = (radial_velocity_meas * range_meas - range_x_l * velocity_x_apr) / range_h_l
+
+    return range_h_apr, range_x_apr, velocity_x_apr, velocity_h_apr
 
 
 def lsm_cubic(X, H):

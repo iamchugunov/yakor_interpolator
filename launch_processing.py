@@ -376,6 +376,11 @@ def process_measurements(data, config):
 
             try:
 
+                theta_meas = theta_meas[12:]
+                range_meas = range_meas[12:]
+                radial_velocity_meas = radial_velocity_meas[12:]
+                theta_meas = theta_meas[12:]
+
                 theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e-1,
                                                     sigma_n=5e-3)
                 range_smoother, radial_velocity_smoother = rts_coord_smoother(time_meas, range_meas,
@@ -387,9 +392,9 @@ def process_measurements(data, config):
                 time_meas_full, range_meas_full, radial_velocity_meas_full, theta_meas_full = time_step_filling_data(
                     time_meas, range_smoother, radial_velocity_smoother, theta_smoother)
 
-                x_estimation_stor = formation_estimation_on_alpha(time_meas_full, range_meas_full,
-                                                                  radial_velocity_meas_full, theta_meas_full,
-                                                                  config.loc_X, config.loc_Y, config.loc_Z)
+                x_estimation_stor = formation_estimation_on_alpha_mina(time_meas_full, range_meas_full,
+                                                                       radial_velocity_meas_full, theta_meas_full,
+                                                                       config.loc_X, config.loc_Y, config.loc_Z)
 
                 i_f_from_acceleration_x, velocity_abs_poly_estimation = shape_factor_from_velocity(x_estimation_stor,
                                                                                                    time_meas_full,
@@ -443,7 +448,10 @@ def process_measurements(data, config):
                                                                                                       velocity_x_set_control,
                                                                                                       velocity_h_set_control,
                                                                                                       as_x_set_control,
-                                                                                                      as_h_set_control)
+                                                                                                      as_h_set_control,
+                                                                                                      sigma_n_R=30,
+                                                                                                      sigma_n_theta=np.deg2rad(
+                                                                                                          5))
 
                 x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
                     x_est_stor,
@@ -585,7 +593,10 @@ def process_measurements(data, config):
                                                                                                       velocity_x_set_control,
                                                                                                       velocity_h_set_control,
                                                                                                       as_x_set_control,
-                                                                                                      as_h_set_control)
+                                                                                                      as_h_set_control,
+                                                                                                      sigma_n_R=30,
+                                                                                                      sigma_n_theta=np.deg2rad(
+                                                                                                          5))
 
                 x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
                     x_est_stor,
@@ -1084,7 +1095,10 @@ def process_measurements(data, config):
                                                                                                       velocity_x_set_control,
                                                                                                       velocity_h_set_control,
                                                                                                       as_x_set_control,
-                                                                                                      as_h_set_control)
+                                                                                                      as_h_set_control,
+                                                                                                      sigma_n_R=30,
+                                                                                                      sigma_n_theta=np.deg2rad(
+                                                                                                          5))
 
                 x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
                     x_est_stor, cx_est_stor,
