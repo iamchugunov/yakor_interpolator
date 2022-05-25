@@ -100,7 +100,9 @@ def process_measurements(data, config):
             for i, point in enumerate(data["points"]):
                 time_meas[i] = point["execTime"]
                 range_meas[i] = point["R"]
-                radial_velocity_meas[i] = abs(point["Vr"])
+                # radial_velocity_meas[i] = abs(point["Vr"])
+
+                radial_velocity_meas[i] = -(point["Vr"])
                 theta_meas[i] = np.deg2rad(point["Epsilon"])
 
             # SKO measurement
@@ -232,7 +234,7 @@ def process_measurements(data, config):
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz),
                          "Vd": x_fall * np.sin(3 * sko_theta_tz),
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -358,7 +360,7 @@ def process_measurements(data, config):
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz),
                          "Vd": x_fall * np.sin(3 * sko_theta_tz),
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -374,6 +376,11 @@ def process_measurements(data, config):
 
             try:
 
+                theta_meas = theta_meas[12:]
+                range_meas = range_meas[12:]
+                radial_velocity_meas = radial_velocity_meas[12:]
+                theta_meas = theta_meas[12:]
+
                 theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e-1,
                                                     sigma_n=5e-3)
                 range_smoother, radial_velocity_smoother = rts_coord_smoother(time_meas, range_meas,
@@ -385,9 +392,9 @@ def process_measurements(data, config):
                 time_meas_full, range_meas_full, radial_velocity_meas_full, theta_meas_full = time_step_filling_data(
                     time_meas, range_smoother, radial_velocity_smoother, theta_smoother)
 
-                x_estimation_stor = formation_estimation_on_alpha(time_meas_full, range_meas_full,
-                                                                  radial_velocity_meas_full, theta_meas_full,
-                                                                  config.loc_X, config.loc_Y, config.loc_Z)
+                x_estimation_stor = formation_estimation_on_alpha_mina(time_meas_full, range_meas_full,
+                                                                       radial_velocity_meas_full, theta_meas_full,
+                                                                       config.loc_X, config.loc_Y, config.loc_Z)
 
                 i_f_from_acceleration_x, velocity_abs_poly_estimation = shape_factor_from_velocity(x_estimation_stor,
                                                                                                    time_meas_full,
@@ -441,7 +448,10 @@ def process_measurements(data, config):
                                                                                                       velocity_x_set_control,
                                                                                                       velocity_h_set_control,
                                                                                                       as_x_set_control,
-                                                                                                      as_h_set_control)
+                                                                                                      as_h_set_control,
+                                                                                                      sigma_n_R=30,
+                                                                                                      sigma_n_theta=np.deg2rad(
+                                                                                                          5))
 
                 x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
                     x_est_stor,
@@ -479,7 +489,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -583,7 +593,10 @@ def process_measurements(data, config):
                                                                                                       velocity_x_set_control,
                                                                                                       velocity_h_set_control,
                                                                                                       as_x_set_control,
-                                                                                                      as_h_set_control)
+                                                                                                      as_h_set_control,
+                                                                                                      sigma_n_R=30,
+                                                                                                      sigma_n_theta=np.deg2rad(
+                                                                                                          5))
 
                 x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
                     x_est_stor,
@@ -621,7 +634,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -707,7 +720,10 @@ def process_measurements(data, config):
                                                                                                       velocity_x_set_control,
                                                                                                       velocity_h_set_control,
                                                                                                       as_x_set_control,
-                                                                                                      as_h_set_control)
+                                                                                                      as_h_set_control,
+                                                                                                      sigma_n_R=30,
+                                                                                                      sigma_n_theta=np.deg2rad(
+                                                                                                          5))
 
                 x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
                     x_est_stor,
@@ -746,7 +762,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -764,7 +780,7 @@ def process_measurements(data, config):
                 K1 = 0.00469403894621853
                 K2 = -1.48037192545477e-07
 
-                act_start_index, act_end_index = act_react_partition(time_meas, range_meas, radial_velocity_meas)
+                act_start_index, act_end_index = act_react_partition(time_meas, radial_velocity_meas)
 
                 time_meas_one_part = time_meas[:act_start_index - 1]
                 range_meas_one_part = range_meas[:act_start_index - 1]
@@ -994,7 +1010,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
@@ -1079,7 +1095,10 @@ def process_measurements(data, config):
                                                                                                       velocity_x_set_control,
                                                                                                       velocity_h_set_control,
                                                                                                       as_x_set_control,
-                                                                                                      as_h_set_control)
+                                                                                                      as_h_set_control,
+                                                                                                      sigma_n_R=30,
+                                                                                                      sigma_n_theta=np.deg2rad(
+                                                                                                          5))
 
                 x_est_fin_stor, y_ext_fin_stor, cx_est_fin_stor, time_meas_fin_stor = extrapolation_to_point_fall(
                     x_est_stor, cx_est_stor,
@@ -1117,7 +1136,7 @@ def process_measurements(data, config):
                          "endpoint_y": h_fall, "endpoint_z": z_fall, "endpoint_GK_x": x_fall_gk[0],
                          "endpoint_GK_z": z_fall_gk[0], "V0": velocity_0_estimation,
                          "Vb": x_fall * np.sin(3 * sko_theta_tz), "Vd": 3 * sko_R_tz,
-                         "SKO_R": sko_range, "SKO_V": sko_radial_velocity, "SKO_theta": sko_theta,
+                         "SKO_R": sko_range, "SKO_VrR": sko_radial_velocity, "SKO_EvR": sko_theta,
                          "valid": True}
 
                 config.data_points = 1
