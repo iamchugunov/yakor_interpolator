@@ -376,10 +376,10 @@ def process_measurements(data, config):
 
             try:
 
-                theta_meas = theta_meas[12:]
-                range_meas = range_meas[12:]
-                radial_velocity_meas = radial_velocity_meas[12:]
-                theta_meas = theta_meas[12:]
+                # time_meas = time_meas[12:]
+                # range_meas = range_meas[12:]
+                # radial_velocity_meas = radial_velocity_meas[12:]
+                # theta_meas = theta_meas[12:]
 
                 theta_smoother = rts_angle_smoother(time_meas, theta_meas, sigma_theta=0.4, sigma_ksi=1e-1,
                                                     sigma_n=5e-3)
